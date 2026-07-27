@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人设置 - HTML 原型分享平台</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+        }
+
+        /* 顶部导航栏 */
+        .navbar {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            padding: 0 32px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar-left {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a202c;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .navbar-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        /* 主内容区 */
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 32px;
+        }
+
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-header h1 {
+            font-size: 32px;
+            color: #1a202c;
+            margin-bottom: 8px;
+        }
+
+        .page-header p {
+            font-size: 15px;
+            color: #718096;
+        }
+
+        /* 设置卡片 */
+        .settings-card {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            margin-bottom: 24px;
+        }
+
+        .settings-section {
+            margin-bottom: 32px;
+        }
+
+        .settings-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a202c;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            background: #f7fafc;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group input:disabled {
+            background: #e2e8f0;
+            cursor: not-allowed;
+        }
+
+        .form-group .hint {
+            font-size: 13px;
+            color: #718096;
+            margin-top: 6px;
+        }
+
+        .form-group.error input {
+            border-color: #fc8181;
+        }
+
+        .form-group .error-text {
+            font-size: 13px;
+            color: #c53030;
+            margin-top: 6px;
+            display: none;
+        }
+
+        .form-group.error .error-text {
+            display: block;
+        }
+
+        /* 按钮 */
+        .btn-primary {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            padding: 12px 24px;
+            background: #e2e8f0;
+            color: #4a5568;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+
+        .btn-danger {
+            padding: 12px 24px;
+            background: #fc8181;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-danger:hover {
+            background: #f56565;
+            transform: translateY(-2px);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        /* 用户信息展示 */
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            padding: 24px;
+            background: #f7fafc;
+            border-radius: 12px;
+            margin-bottom: 24px;
+        }
+
+        .user-avatar-large {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 32px;
+            flex-shrink: 0;
+        }
+
+        .user-details h2 {
+            font-size: 24px;
+            color: #1a202c;
+            margin-bottom: 6px;
+        }
+
+        .user-details p {
+            font-size: 14px;
+            color: #718096;
+        }
+
+        .role-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: #fef5e7;
+            color: #d69e2e;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        /* 危险区域 */
+        .danger-zone {
+            background: #fff5f5;
+            border: 2px solid #fc8181;
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .danger-zone h3 {
+            color: #c53030;
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+
+        .danger-zone p {
+            color: #742a2a;
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+
+        /* 成功提示 */
+        .success-message {
+            background: #c6f6d5;
+            border: 1px solid #48bb78;
+            color: #22543d;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .success-message.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航 -->
+    <nav class="navbar">
+        <div class="navbar-left">
+            <a href="index.html" class="logo">
+                <div class="logo-icon">📐</div>
+                HTML 原型平台
+            </a>
+        </div>
+        <div class="navbar-right">
+            <div class="user-avatar">A</div>
+        </div>
+    </nav>
+
+    <!-- 主内容 -->
+    <div class="container">
+        <div class="page-header">
+            <h1>个人设置</h1>
+            <p>管理您的账号信息和安全设置</p>
+        </div>
+
+        <div class="success-message" id="successMessage">
+            ✓ 设置已保存
+        </div>
+
+        <!-- 用户信息卡片 -->
+        <div class="settings-card">
+            <div class="user-info">
+                <div class="user-avatar-large">A</div>
+                <div class="user-details">
+                    <h2>Admin</h2>
+                    <p>注册于 2026-01-15</p>
+                    <span class="role-badge">管理员</span>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <div class="section-title">账号信息</div>
+                <div class="form-group">
+                    <label for="username">用户名</label>
+                    <input type="text" id="username" value="admin" disabled>
+                    <div class="hint">用户名注册后不可修改</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 修改密码卡片 -->
+        <div class="settings-card">
+            <div class="settings-section">
+                <div class="section-title">修改密码</div>
+                <form id="passwordForm">
+                    <div class="form-group">
+                        <label for="currentPassword">当前密码</label>
+                        <input 
+                            type="password" 
+                            id="currentPassword" 
+                            placeholder="请输入当前密码"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="newPassword">新密码</label>
+                        <input 
+                            type="password" 
+                            id="newPassword" 
+                            placeholder="字母或数字，6位以上"
+                            required
+                        >
+                        <div class="hint">仅支持英文字母或数字，长度6位以上</div>
+                        <div class="error-text">密码格式不正确</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirmPassword">确认新密码</label>
+                        <input 
+                            type="password" 
+                            id="confirmPassword" 
+                            placeholder="再次输入新密码"
+                            required
+                        >
+                        <div class="error-text">两次输入的密码不一致</div>
+                    </div>
+
+                    <div class="button-group">
+                        <button type="submit" class="btn-primary">保存密码</button>
+                        <button type="button" class="btn-secondary" onclick="resetPasswordForm()">取消</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 危险操作区域 -->
+        <div class="settings-card">
+            <div class="danger-zone">
+                <h3>⚠️ 危险操作</h3>
+                <p>以下操作不可恢复，请谨慎执行</p>
+                <button class="btn-danger" onclick="confirmLogout()">退出登录</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const passwordForm = document.getElementById('passwordForm');
+        const currentPassword = document.getElementById('currentPassword');
+        const newPassword = document.getElementById('newPassword');
+        const confirmPassword = document.getElementById('confirmPassword');
+        const successMessage = document.getElementById('successMessage');
+
+        // 密码验证
+        function validatePassword(value) {
+            const regex = /^[a-zA-Z0-9]{6,}$/;
+            return regex.test(value);
+        }
+
+        // 实时验证新密码
+        newPassword.addEventListener('blur', function() {
+            const formGroup = this.parentElement;
+            if (!validatePassword(this.value)) {
+                formGroup.classList.add('error');
+            } else {
+                formGroup.classList.remove('error');
+            }
+        });
+
+        // 实时验证确认密码
+        confirmPassword.addEventListener('blur', function() {
+            const formGroup = this.parentElement;
+            if (this.value !== newPassword.value) {
+                formGroup.classList.add('error');
+            } else {
+                formGroup.classList.remove('error');
+            }
+        });
+
+        // 表单提交
+        passwordForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            let isValid = true;
+
+            // 验证当前密码
+            if (!currentPassword.value) {
+                alert('请输入当前密码');
+                return;
+            }
+
+            // 验证新密码
+            if (!validatePassword(newPassword.value)) {
+                newPassword.parentElement.classList.add('error');
+                isValid = false;
+            } else {
+                newPassword.parentElement.classList.remove('error');
+            }
+
+            // 验证确认密码
+            if (newPassword.value !== confirmPassword.value) {
+                confirmPassword.parentElement.classList.add('error');
+                isValid = false;
+            } else {
+                confirmPassword.parentElement.classList.remove('error');
+            }
+
+            if (isValid) {
+                // 显示成功消息
+                successMessage.classList.add('show');
+                setTimeout(() => {
+                    successMessage.classList.remove('show');
+                }, 3000);
+
+                // 重置表单
+                passwordForm.reset();
+            }
+        });
+
+        // 重置密码表单
+        function resetPasswordForm() {
+            passwordForm.reset();
+            document.querySelectorAll('.form-group.error').forEach(group => {
+                group.classList.remove('error');
+            });
+        }
+
+        // 确认退出登录
+        function confirmLogout() {
+            if (confirm('确定要退出登录吗？')) {
+                window.location.href = 'login.html';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HyperStore 4.0 - 账户流水明细</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* 页面标题 */
+        .page-header {
+            background: #fff;
+            padding: 20px 24px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }
+
+        .page-header h1 {
+            font-size: 20px;
+            font-weight: 500;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+        }
+
+        .breadcrumb {
+            font-size: 13px;
+            color: #999;
+        }
+
+        .breadcrumb a {
+            color: #409eff;
+            text-decoration: none;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        /* 查询区 */
+        .query-section {
+            background: #fff;
+            padding: 24px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }
+
+        .query-title {
+            font-size: 15px;
+            font-weight: 500;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e8e8e8;
+        }
+
+        .query-form {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px 24px;
+            margin-bottom: 16px;
+        }
+
+        .form-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .form-item label {
+            width: 100px;
+            flex-shrink: 0;
+            text-align: right;
+            margin-right: 12px;
+            color: #666;
+        }
+
+        .form-item label.required::before {
+            content: '*';
+            color: #f56c6c;
+            margin-right: 4px;
+        }
+
+        .form-item input,
+        .form-item select {
+            flex: 1;
+            height: 36px;
+            padding: 0 12px;
+            border: 1px solid #dcdfe6;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .form-item input:focus,
+        .form-item select:focus {
+            outline: none;
+            border-color: #409eff;
+        }
+
+        .query-actions {
+            text-align: center;
+            padding-top: 8px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 9px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 0 8px;
+        }
+
+        .btn-primary {
+            background: #409eff;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: #66b1ff;
+        }
+
+        .btn-default {
+            background: #fff;
+            color: #606266;
+            border: 1px solid #dcdfe6;
+        }
+
+        .btn-default:hover {
+            color: #409eff;
+            border-color: #c6e2ff;
+            background: #ecf5ff;
+        }
+
+        .btn-success {
+            background: #67c23a;
+            color: #fff;
+        }
+
+        .btn-success:hover {
+            background: #85ce61;
+        }
+
+        /* 统计区 */
+        .stats-section {
+            background: #fff;
+            padding: 20px 24px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-around;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: #999;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 500;
+        }
+
+        .stat-value.income {
+            color: #67c23a;
+        }
+
+        .stat-value.expense {
+            color: #f56c6c;
+        }
+
+        .stat-value.total {
+            color: #409eff;
+        }
+
+        /* 列表区 */
+        .table-section {
+            background: #fff;
+            padding: 0;
+            border-radius: 4px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }
+
+        .table-toolbar {
+            padding: 16px 24px;
+            border-bottom: 1px solid #e8e8e8;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-info {
+            color: #999;
+            font-size: 13px;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #fafafa;
+        }
+
+        th {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 500;
+            color: #666;
+            font-size: 13px;
+            border-bottom: 1px solid #e8e8e8;
+            white-space: nowrap;
+        }
+
+        th.sortable {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        th.sortable:hover {
+            background: #f0f0f0;
+        }
+
+        th.sortable::after {
+            content: ' ↕';
+            color: #ccc;
+            font-size: 12px;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+        }
+
+        tbody tr:hover {
+            background: #fafafa;
+        }
+
+        .amount-positive {
+            color: #67c23a;
+        }
+
+        .amount-negative {
+            color: #f56c6c;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+
+        .badge-wallet {
+            background: #e1f3ff;
+            color: #409eff;
+        }
+
+        .badge-credit {
+            background: #fef0f0;
+            color: #f56c6c;
+        }
+
+        .badge-rebate {
+            background: #f0f9ff;
+            color: #67c23a;
+        }
+
+        .badge-gift {
+            background: #fdf6ec;
+            color: #e6a23c;
+        }
+
+        .badge-income {
+            background: #f0f9ff;
+            color: #67c23a;
+        }
+
+        .badge-expense {
+            background: #fef0f0;
+            color: #f56c6c;
+        }
+
+        .badge-completed {
+            background: #f0f9ff;
+            color: #67c23a;
+        }
+
+        .link {
+            color: #409eff;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .link:hover {
+            text-decoration: underline;
+        }
+
+        /* 分页 */
+        .pagination {
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .pagination-info {
+            color: #999;
+            font-size: 13px;
+        }
+
+        .pagination-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .page-btn {
+            padding: 5px 10px;
+            border: 1px solid #dcdfe6;
+            background: #fff;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .page-btn:hover {
+            color: #409eff;
+            border-color: #409eff;
+        }
+
+        .page-btn.active {
+            background: #409eff;
+            color: #fff;
+            border-color: #409eff;
+        }
+
+        .page-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .page-size-select {
+            padding: 5px 8px;
+            border: 1px solid #dcdfe6;
+            border-radius: 3px;
+            font-size: 13px;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            padding: 60px 0;
+            text-align: center;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        /* 加载动画 */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-overlay.show {
+            display: flex;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #409eff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #fff;
+            margin-top: 16px;
+            font-size: 14px;
+        }
+
+        /* 消息提示 */
+        .message-toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            background: #fff;
+            border-radius: 4px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+            display: none;
+            align-items: center;
+            gap: 8px;
+            z-index: 10000;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        .message-toast.show {
+            display: flex;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -20px);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, 0);
+            }
+        }
+
+        .message-icon {
+            font-size: 18px;
+        }
+
+        .message-toast.success {
+            border-left: 4px solid #67c23a;
+        }
+
+        .message-toast.success .message-icon {
+            color: #67c23a;
+        }
+
+        .message-toast.info {
+            border-left: 4px solid #409eff;
+        }
+
+        .message-toast.info .message-icon {
+            color: #409eff;
+        }
+
+        .message-toast.warning {
+            border-left: 4px solid #e6a23c;
+        }
+
+        .message-toast.warning .message-icon {
+            color: #e6a23c;
+        }
+
+        .message-toast.error {
+            border-left: 4px solid #f56c6c;
+        }
+
+        .message-toast.error .message-icon {
+            color: #f56c6c;
+        }
+
+        /* 表格行动画 */
+        tbody tr {
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 统计区动画 */
+        .stats-section {
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 表格区动画 */
+        .table-section {
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        /* 按钮加载状态 */
+        .btn.loading {
+            position: relative;
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .btn.loading::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            top: 50%;
+            left: 50%;
+            margin-left: -8px;
+            margin-top: -8px;
+            border: 2px solid #fff;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        /* 高亮效果 */
+        .highlight {
+            animation: highlight 1s ease-out;
+        }
+
+        @keyframes highlight {
+            0%, 100% {
+                background: transparent;
+            }
+            50% {
+                background: #fff7e6;
+            }
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 4px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+        }
+
+        .tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* 表格排序指示 */
+        th.sort-asc::after {
+            content: ' ↑';
+            color: #409eff;
+        }
+
+        th.sort-desc::after {
+            content: ' ↓';
+            color: #409eff;
+        }
+
+        /* 查询区折叠动画 */
+        .query-form {
+            max-height: 500px;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+        }
+
+        .query-form.collapsed {
+            max-height: 0;
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 页面标题 -->
+        <div class="page-header">
+            <h1>账户流水明细</h1>
+            <div class="breadcrumb">
+                <a href="#">结算中心</a> / 
+                <a href="#">结算账户</a> / 
+                <span>账户流水明细</span>
+            </div>
+        </div>
+
+        <!-- 查询区 -->
+        <div class="query-section">
+            <div class="query-title">查询条件</div>
+            <div class="query-form">
+                <div class="form-item">
+                    <label>会员</label>
+                    <input type="text" placeholder="输入会员编号或会员名称">
+                </div>
+                <div class="form-item">
+                    <label>账户类型</label>
+                    <select>
+                        <option value="">全部</option>
+                        <option value="wallet">钱包账户</option>
+                        <option value="credit">信用账户</option>
+                        <option value="rebate">返利账户</option>
+                        <option value="gift">礼品卡账户</option>
+                        <option value="commission">佣金账户</option>
+                    </select>
+                </div>
+                <div class="form-item">
+                    <label>流水类型</label>
+                    <select>
+                        <option value="">全部</option>
+                        <option value="income">收入</option>
+                        <option value="expense">支出</option>
+                    </select>
+                </div>
+                <div class="form-item">
+                    <label>业务类型</label>
+                    <select>
+                        <option value="">全部</option>
+                        <option value="pay">订单支付</option>
+                        <option value="recharge">充值</option>
+                        <option value="withdraw">提现</option>
+                        <option value="refund">退款</option>
+                        <option value="rebate">返利发放</option>
+                        <option value="repay">信用还款</option>
+                    </select>
+                </div>
+                <div class="form-item">
+                    <label class="required">开始时间</label>
+                    <input type="date" value="2026-06-01">
+                </div>
+                <div class="form-item">
+                    <label class="required">结束时间</label>
+                    <input type="date" value="2026-06-30">
+                </div>
+                <div class="form-item">
+                    <label>店铺组织</label>
+                    <select>
+                        <option value="">全部</option>
+                        <option value="org1">华东区域</option>
+                        <option value="org2">华南区域</option>
+                        <option value="org3">华北区域</option>
+                    </select>
+                </div>
+                <div class="form-item">
+                    <label>流水状态</label>
+                    <select>
+                        <option value="">全部</option>
+                        <option value="completed">已完成</option>
+                        <option value="cancelled">已取消</option>
+                        <option value="refunded">已退款</option>
+                    </select>
+                </div>
+                <div class="form-item">
+                    <label>单据号</label>
+                    <input type="text" placeholder="订单号/结算单号">
+                </div>
+            </div>
+            <div class="query-actions">
+                <button class="btn btn-primary" onclick="search()">查询</button>
+                <button class="btn btn-default" onclick="reset()">重置</button>
+                <button class="btn btn-success" onclick="exportData()">导出</button>
+            </div>
+        </div>
+
+        <!-- 统计区 -->
+        <div class="stats-section">
+            <div class="stat-item">
+                <div class="stat-label">收入总额</div>
+                <div class="stat-value income">¥ 286,500.00</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">支出总额</div>
+                <div class="stat-value expense">¥ 198,320.00</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">净额</div>
+                <div class="stat-value total">¥ 88,180.00</div>
+            </div>
+        </div>
+
+        <!-- 列表区 -->
+        <div class="table-section">
+            <div class="table-toolbar">
+                <div class="table-info">共 <strong>156</strong> 条记录</div>
+                <div class="table-actions">
+                    <button class="btn btn-default" style="padding: 6px 14px; font-size: 13px;">刷新</button>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="sortable">流水时间</th>
+                            <th>会员编号</th>
+                            <th>会员名称</th>
+                            <th>账户类型</th>
+                            <th>流水类型</th>
+                            <th>业务类型</th>
+                            <th class="sortable">金额</th>
+                            <th>余额</th>
+                            <th>关联单据</th>
+                            <th>店铺组织</th>
+                            <th>流水状态</th>
+                            <th>备注</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr>
+                            <td>2026-06-30 15:23:45</td>
+                            <td><a href="#" class="link">M20001</a></td>
+                            <td>康唯雅（上海）贸易有限公司</td>
+                            <td><span class="badge badge-wallet">钱包账户</span></td>
+                            <td><span class="badge badge-expense">支出</span></td>
+                            <td>订单支付</td>
+                            <td class="amount-negative">-8,520.00</td>
+                            <td>12,680.00</td>
+                            <td><a href="#" class="link">SO20260630001</a></td>
+                            <td>华东区域</td>
+                            <td><span class="badge badge-completed">已完成</span></td>
+                            <td>订单全额支付</td>
+                            <td><a href="#" class="link">详情</a></td>
+                        </tr>
+                        <tr>
+                            <td>2026-06-30 14:15:32</td>
+                            <td><a href="#" class="link">M20005</a></td>
+                            <td>张三</td>
+                            <td><span class="badge badge-rebate">返利账户</span></td>
+                            <td><span class="badge badge-income">收入</span></td>
+                            <td>返利发放</td>
+                            <td class="amount-positive">+3,200.00</td>
+                            <td>15,680.00</td>
+                            <td><a href="#" class="link">RB20260630012</a></td>
+                            <td>华南区域</td>
+                            <td><span class="badge badge-completed">已完成</span></td>
+                            <td>6月返利发放</td>
+                            <td><a href="#" class="link">详情</a></td>
+                        </tr>
+                        <tr>
+                            <td>2026-06-30 11:08:16</td>
+                            <td><a href="#" class="link">M20012</a></td>
+                            <td>李四</td>
+                            <td><span class="badge badge-credit">信用账户</span></td>
+                            <td><span class="badge badge-income">收入</span></td>
+                            <td>信用还款</td>
+                            <td class="amount-positive">+15,000.00</td>
+                            <td>48,000.00</td>
+                            <td><a href="#" class="link">CR20260630008</a></td>
+                            <td>华北区域</td>
+                            <td><span class="badge badge-completed">已完成</span></td>
+                            <td>银行转账还款</td>
+                            <td><a href="#" class="link">详情</a></td>
+                        </tr>
+                        <tr>
+                            <td>2026-06-29 16:42:28</td>
+                            <td><a href="#" class="link">M20001</a></td>
+                            <td>康唯雅（上海）贸易有限公司</td>
+                            <td><span class="badge badge-wallet">钱包账户</span></td>
+                            <td><span class="badge badge-income">收入</span></td>
+                            <td>充值</td>
+                            <td class="amount-positive">+50,000.00</td>
+                            <td>21,200.00</td>
+                            <td><a href="#" class="link">RCH20260629015</a></td>
+                            <td>华东区域</td>
+                            <td><span class="badge badge-completed">已完成</span></td>
+                            <td>在线充值</td>
+                            <td><a href="#" class="link">详情</a></td>
+                        </tr>
+                        <tr>
+                            <td>2026-06-29 10:25:11</td>
+                            <td><a href="#" class="link">M20008</a></td>
+                            <td>王五</td>
+                            <td><span class="badge badge-gift">礼品卡</span></td>
+                            <td><span class="badge badge-expense">支出</span></td>
+                            <td>订单支付</td>
+                            <td class="amount-negative">-1,280.00</td>
+                            <td>3,720.00</td>
+                            <td><a href="#" class="link">SO20260629088</a></td>
+                            <td>华南区域</td>
+                            <td><span class="badge badge-completed">已完成</span></td>
+                            <td>礼品卡抵扣</td>
+                            <td><a href="#" class="link">详情</a></td>
+                        </tr>
+                        <tr>
+                            <td>2026-06-28 18:33:52</td>
+                            <td><a href="#" class="link">M20003</a></td>
+                            <td>赵六</td>
+                            <td><span class="badge badge-credit">信用账户</span></td>
+                            <td><span class="badge badge-expense">支出</span></td>
+                            <td>订单支付</td>
+                            <td class="amount-negative">-22,400.00</td>
+                            <td>27,600.00</td>
+                            <td><a href="#" class="link">SO20260628056</a></td>
+                            <td>华东区域</td>
+                            <td><span class="badge badge-completed">已完成</span></td>
+                            <td>信用支付</td>
+                            <td><a href="#" class="link">详情</a></td>
+                        </tr>
+                        <tr>
+                            <td>2026-06-28 14:18:05</td>
+                            <td><a href="#" class="link">M20005</a></td>
+                            <td>张三</td>
+                            <td><span class="badge badge-rebate">返利账户</span></td>
+                            <td><span class="badge badge-expense">支出</span></td>
+                            <td>订单抵扣</td>
+                            <td class="amount-negative">-2,500.00</td>
+                            <td>12,480.00</td>
+                            <td><a href="#" class="link">SO20260628042</a></td>
+                            <td>华南区域</td>
+                            <td><span class="badge badge-completed">已完成</span></td>
+                            <td>下单时使用返利</td>
+                            <td><a href="#" class="link">详情</a></td>
+                        </tr>
+                        <tr>
+                            <td>2026-06-27 09:52:33</td>
+                            <td><a href="#" class="link">M20010</a></td>
+                            <td>孙七</td>
+                            <td><span class="badge badge-wallet">钱包账户</span></td>
+                            <td><span class="badge badge-income">收入</span></td>
+                            <td>退款</td>
+                            <td class="amount-positive">+3,680.00</td>
+                            <td>8,920.00</td>
+                            <td><a href="#" class="link">RF20260627023</a></td>
+                            <td>华北区域</td>
+                            <td><span class="badge badge-completed">已完成</span></td>
+                            <td>订单取消退款</td>
+                            <td><a href="#" class="link">详情</a></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination">
+                <div class="pagination-info">
+                    显示 1 - 50 条，共 156 条
+                </div>
+                <div class="pagination-controls">
+                    <button class="page-btn" disabled>上一页</button>
+                    <button class="page-btn active">1</button>
+                    <button class="page-btn">2</button>
+                    <button class="page-btn">3</button>
+                    <button class="page-btn">4</button>
+                    <button class="page-btn">下一页</button>
+                    <select class="page-size-select">
+                        <option value="50" selected>50 条/页</option>
+                        <option value="100">100 条/页</option>
+                        <option value="200">200 条/页</option>
+                        <option value="500">500 条/页</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载动画 -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div style="text-align: center;">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">加载中...</div>
+        </div>
+    </div>
+
+    <!-- 消息提示 -->
+    <div class="message-toast" id="messageToast">
+        <span class="message-icon">✓</span>
+        <span class="message-text"></span>
+    </div>
+
+    <script>
+        // 工具函数：显示消息提示
+        function showMessage(message, type = 'success') {
+            const toast = document.getElementById('messageToast');
+            const textEl = toast.querySelector('.message-text');
+            
+            // 设置消息内容
+            textEl.textContent = message;
+            
+            // 移除旧的类型类
+            toast.classList.remove('success', 'info', 'warning', 'error');
+            toast.classList.add(type);
+            
+            // 设置图标
+            const iconEl = toast.querySelector('.message-icon');
+            switch(type) {
+                case 'success':
+                    iconEl.textContent = '✓';
+                    break;
+                case 'info':
+                    iconEl.textContent = 'ℹ';
+                    break;
+                case 'warning':
+                    iconEl.textContent = '⚠';
+                    break;
+                case 'error':
+                    iconEl.textContent = '✕';
+                    break;
+            }
+            
+            // 显示消息
+            toast.classList.add('show');
+            
+            // 3秒后自动隐藏
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // 工具函数：显示加载动画
+        function showLoading() {
+            document.getElementById('loadingOverlay').classList.add('show');
+        }
+
+        // 工具函数：隐藏加载动画
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.remove('show');
+        }
+
+        // 工具函数：模拟数据加载
+        function simulateLoading(callback, duration = 1500) {
+            showLoading();
+            setTimeout(() => {
+                hideLoading();
+                if (callback) callback();
+            }, duration);
+        }
+
+        // 查询功能
+        function search() {
+            // 验证必填项
+            const startDate = document.querySelector('input[type="date"][value="2026-06-01"]');
+            const endDate = document.querySelector('input[type="date"][value="2026-06-30"]');
+            
+            if (!startDate.value || !endDate.value) {
+                showMessage('请选择时间范围', 'warning');
+                return;
+            }
+            
+            // 添加按钮加载状态
+            const btn = event.target;
+            btn.classList.add('loading');
+            btn.textContent = '';
+            
+            // 模拟查询
+            simulateLoading(() => {
+                // 移除加载状态
+                btn.classList.remove('loading');
+                btn.textContent = '查询';
+                
+                // 刷新表格数据（添加动画）
+                refreshTableData();
+                
+                // 显示成功消息
+                showMessage('查询成功，共找到 156 条记录', 'success');
+            });
+        }
+
+        // 重置功能
+        function reset() {
+            // 重置表单
+            document.querySelectorAll('input, select').forEach(el => {
+                if (el.type === 'date') {
+                    // 保持默认日期
+                } else if (el.tagName === 'SELECT') {
+                    el.selectedIndex = 0;
+                } else {
+                    el.value = '';
+                }
+            });
+            
+            // 显示提示
+            showMessage('查询条件已重置', 'info');
+            
+            // 添加高亮效果
+            document.querySelector('.query-form').classList.add('highlight');
+            setTimeout(() => {
+                document.querySelector('.query-form').classList.remove('highlight');
+            }, 1000);
+        }
+
+        // 导出功能
+        function exportData() {
+            const btn = event.target;
+            btn.classList.add('loading');
+            btn.textContent = '';
+            
+            simulateLoading(() => {
+                btn.classList.remove('loading');
+                btn.textContent = '导出';
+                
+                showMessage('导出成功！文件名：账户流水明细_20260630_182900.xlsx', 'success');
+            }, 2000);
+        }
+
+        // 刷新表格数据（添加动画）
+        function refreshTableData() {
+            const tbody = document.getElementById('tableBody');
+            const rows = tbody.querySelectorAll('tr');
+            
+            // 先淡出
+            rows.forEach((row, index) => {
+                setTimeout(() => {
+                    row.style.opacity = '0';
+                    row.style.transform = 'translateY(-10px)';
+                }, index * 50);
+            });
+            
+            // 再淡入
+            setTimeout(() => {
+                rows.forEach((row, index) => {
+                    setTimeout(() => {
+                        row.style.transition = 'all 0.4s ease-out';
+                        row.style.opacity = '1';
+                        row.style.transform = 'translateY(0)';
+                    }, index * 50);
+                });
+            }, rows.length * 50 + 200);
+        }
+
+        // 表格排序
+        let currentSort = { column: null, order: null };
+        
+        document.querySelectorAll('th.sortable').forEach(th => {
+            th.addEventListener('click', function() {
+                const columnName = this.textContent.trim();
+                
+                // 移除其他列的排序状态
+                document.querySelectorAll('th.sortable').forEach(t => {
+                    t.classList.remove('sort-asc', 'sort-desc');
+                });
+                
+                // 切换排序状态
+                if (currentSort.column === columnName) {
+                    currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc';
+                } else {
+                    currentSort.column = columnName;
+                    currentSort.order = 'asc';
+                }
+                
+                // 添加排序样式
+                this.classList.add(currentSort.order === 'asc' ? 'sort-asc' : 'sort-desc');
+                
+                // 显示排序提示
+                showMessage(`按${columnName}${currentSort.order === 'asc' ? '升序' : '降序'}排序`, 'info');
+                
+                // 刷新数据
+                setTimeout(() => {
+                    refreshTableData();
+                }, 500);
+            });
+        });
+
+        // 链接点击
+        document.querySelectorAll('.link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const text = this.textContent;
+                
+                // 添加点击反馈
+                this.style.opacity = '0.5';
+                setTimeout(() => {
+                    this.style.opacity = '1';
+                }, 200);
+                
+                // 根据类型显示不同提示
+                if (text.startsWith('M')) {
+                    showMessage(`正在跳转到会员 ${text} 的详情页...`, 'info');
+                } else if (text.startsWith('SO')) {
+                    showMessage(`正在跳转到订单 ${text} 的详情页...`, 'info');
+                } else if (text === '详情') {
+                    showMessage('正在打开流水详情...', 'info');
+                } else {
+                    showMessage(`正在跳转到 ${text} 页面...`, 'info');
+                }
+            });
+        });
+
+        // 表格行悬停效果增强
+        document.querySelectorAll('tbody tr').forEach(row => {
+            row.addEventListener('mouseenter', function() {
+                this.style.backgroundColor = '#f5f7fa';
+                this.style.transform = 'scale(1.005)';
+                this.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)';
+                this.style.transition = 'all 0.2s ease';
+            });
+            
+            row.addEventListener('mouseleave', function() {
+                this.style.backgroundColor = '';
+                this.style.transform = '';
+                this.style.boxShadow = '';
+            });
+        });
+
+        // 分页按钮点击
+        document.querySelectorAll('.page-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (this.disabled) return;
+                
+                const pageText = this.textContent;
+                
+                // 移除当前激活状态
+                document.querySelectorAll('.page-btn').forEach(b => {
+                    b.classList.remove('active');
+                });
+                
+                // 添加激活状态
+                if (!isNaN(pageText)) {
+                    this.classList.add('active');
+                }
+                
+                // 显示加载动画
+                simulateLoading(() => {
+                    refreshTableData();
+                    showMessage(`已切换到第 ${pageText} 页`, 'info');
+                }, 800);
+            });
+        });
+
+        // 分页大小选择
+        document.querySelector('.page-size-select').addEventListener('change', function() {
+            const pageSize = this.value;
+            showMessage(`每页显示 ${pageSize} 条记录`, 'info');
+            
+            simulateLoading(() => {
+                refreshTableData();
+            }, 800);
+        });
+
+        // 统计区数字滚动效果
+        function animateValue(element, start, end, duration) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const value = Math.floor(progress * (end - start) + start);
+                element.textContent = '¥ ' + value.toLocaleString() + '.00';
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        // 页面加载完成后执行动画
+        window.addEventListener('load', function() {
+            // 统计数字动画
+            const statValues = document.querySelectorAll('.stat-value');
+            animateValue(statValues[0], 0, 286500, 1000);
+            animateValue(statValues[1], 0, 198320, 1000);
+            animateValue(statValues[2], 0, 88180, 1000);
+            
+            // 显示欢迎消息
+            setTimeout(() => {
+                showMessage('数据加载完成，共 156 条流水记录', 'success');
+            }, 500);
+        });
+
+        // 添加键盘快捷键
+        document.addEventListener('keydown', function(e) {
+            // Ctrl/Cmd + Enter 执行查询
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                search();
+            }
+            
+            // Esc 重置查询
+            if (e.key === 'Escape') {
+                reset();
+            }
+        });
+
+        // 添加工具提示
+        document.querySelectorAll('.sortable').forEach(th => {
+            th.title = '点击排序';
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-seed/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Database
+prisma/*.db
+prisma/*.db-journal
+prisma/migrations/
+
+# Uploaded prototypes & extracted resources
+storage/
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Test fixtures
+coverage/
+test-results/
+tmp-spike/
+
+# Backup & temp files
+*.bak
+*.tmp
+*.temp
+
+# Docker volumes (do not commit real data)
+data/

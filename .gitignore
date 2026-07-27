@@ -1,0 +1,53 @@
+# Root ignores — build artifacts, environment secrets, local data & OS files
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-seed/
+
+# Environment secrets — only .env.example is committed
+.env
+.env.local
+.env.*.local
+
+# Databases (local / test)
+*.db
+*.db-journal
+
+# Uploaded prototypes & extracted preview resources
+storage/
+data/
+
+# Docker volumes (do not commit real data)
+volumes/
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Test
+coverage/
+test-results/
+playwright-report/
+
+# Temporary files
+*.tmp
+*.temp

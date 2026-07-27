@@ -1,0 +1,88 @@
+:root {
+  /* Semantic surfaces */
+  --hd-canvas: #f5f7fa;
+  --hd-surface: #ffffff;
+  --hd-surface-subtle: #f9fafb;
+  --hd-surface-selected: #eef4ff;
+  --hd-surface-inverse: #172033;
+
+  /* Text and borders */
+  --hd-text: #182230;
+  --hd-text-secondary: #475467;
+  --hd-text-tertiary: #667085;
+  --hd-text-disabled: #98a2b3;
+  --hd-border: #dfe3eb;
+  --hd-border-subtle: #eaecf0;
+  --hd-border-strong: #c8ced9;
+
+  /* Brand and feedback */
+  --hd-brand: #2457d6;
+  --hd-brand-hover: #1d49b7;
+  --hd-brand-active: #173c96;
+  --hd-brand-subtle: #edf2ff;
+  --hd-focus-ring: rgba(36, 87, 214, 0.22);
+  --hd-success: #067647;
+  --hd-success-subtle: #ecfdf3;
+  --hd-warning: #b54708;
+  --hd-warning-subtle: #fffaeb;
+  --hd-danger: #b42318;
+  --hd-danger-subtle: #fef3f2;
+  --hd-info: #175cd3;
+  --hd-info-subtle: #eff8ff;
+
+  /* Layout */
+  --hd-topbar-height: 60px;
+  --hd-sidebar-width: 248px;
+  --hd-rightbar-width: 320px;
+  --hd-viewer-sidebar-width: 248px;
+  --hd-viewer-rightbar-width: 360px;
+  --hd-page-gutter: 32px;
+  --hd-page-gutter-compact: 20px;
+
+  /* Shape, elevation, and motion */
+  --hd-radius-xs: 4px;
+  --hd-radius-sm: 6px;
+  --hd-radius-md: 8px;
+  --hd-radius-lg: 12px;
+  --hd-shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --hd-shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.04);
+  --hd-shadow-md: 0 8px 20px rgba(16, 24, 40, 0.10);
+  --hd-transition-fast: 160ms ease-out;
+  --hd-transition-base: 220ms ease-out;
+
+  --hd-font-sans: Inter, "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* Compatibility aliases. Remove only after the shell and pages are migrated. */
+  --bg-page: var(--hd-canvas);
+  --bg-surface: var(--hd-surface);
+  --bg-muted: var(--hd-surface-subtle);
+  --bg-soft: var(--hd-surface-selected);
+  --text-primary: var(--hd-text);
+  --text-secondary: var(--hd-text-secondary);
+  --text-tertiary: var(--hd-text-tertiary);
+  --border-light: var(--hd-border);
+  --border-soft: var(--hd-border-subtle);
+  --brand: var(--hd-brand);
+  --brand-hover: var(--hd-brand-hover);
+  --brand-soft: var(--hd-brand-subtle);
+  --brand-ring: var(--hd-focus-ring);
+  --success: var(--hd-success);
+  --success-soft: var(--hd-success-subtle);
+  --warning: var(--hd-warning);
+  --warning-soft: var(--hd-warning-subtle);
+  --danger: var(--hd-danger);
+  --danger-soft: var(--hd-danger-subtle);
+  --radius-sm: var(--hd-radius-sm);
+  --radius-md: var(--hd-radius-md);
+  --radius-lg: var(--hd-radius-lg);
+  --radius-btn: var(--hd-radius-md);
+  --shadow-sm: var(--hd-shadow-sm);
+  --shadow-md: var(--hd-shadow-md);
+  --topbar-height: var(--hd-topbar-height);
+  --sidebar-width: var(--hd-sidebar-width);
+  --rightbar-width: var(--hd-rightbar-width);
+  --viewer-sidebar-width: var(--hd-viewer-sidebar-width);
+  --viewer-rightbar-width: var(--hd-viewer-rightbar-width);
+  --font-sans: var(--hd-font-sans);
+  --transition-fast: var(--hd-transition-fast);
+}

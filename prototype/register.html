@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 - HyperDesign</title>
+    <style>
+        :root {
+            --bg-page: #f8fafc;
+            --bg-surface: #ffffff;
+            --bg-muted: #f6f8fb;
+            --text-primary: #111827;
+            --text-secondary: #475467;
+            --text-tertiary: #98a2b3;
+            --border-light: #eaecf0;
+            --brand: #2563eb;
+            --brand-hover: #1d4ed8;
+            --brand-soft: #eff6ff;
+            --success: #027a48;
+            --success-soft: #ecfdf3;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.08);
+            --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08), 0 8px 32px rgba(16, 24, 40, 0.12);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: var(--bg-page);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        a { color: var(--brand); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        .auth-shell {
+            width: 100%;
+            max-width: 440px;
+            animation: slideUp 0.4s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .brand-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .brand-mark {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            background: var(--brand);
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .brand-header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .brand-header p {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .auth-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-sm);
+            font-size: 15px;
+            transition: .15s ease;
+            background: var(--bg-surface);
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--brand);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+        }
+
+        .password-strength {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .strength-bar {
+            flex: 1;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--border-light);
+            transition: .2s ease;
+        }
+
+        .strength-bar.active {
+            background: var(--success);
+        }
+
+        .strength-text {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-top: 6px;
+        }
+
+        .agreement {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 24px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .agreement input {
+            margin-top: 2px;
+        }
+
+        .btn-primary {
+            width: 100%;
+            height: 44px;
+            background: var(--brand);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: .15s ease;
+            margin-bottom: 16px;
+        }
+
+        .btn-primary:hover {
+            background: var(--brand-hover);
+            transform: translateY(-1px);
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 24px 0;
+        }
+
+        .divider-line {
+            flex: 1;
+            height: 1px;
+            background: var(--border-light);
+        }
+
+        .divider-text {
+            font-size: 13px;
+            color: var(--text-tertiary);
+        }
+
+        .social-buttons {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .social-btn {
+            flex: 1;
+            height: 42px;
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-sm);
+            background: var(--bg-surface);
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: .15s ease;
+        }
+
+        .social-btn:hover {
+            background: var(--bg-muted);
+        }
+
+        .login-prompt {
+            text-align: center;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .login-prompt a {
+            font-weight: 600;
+            margin-left: 4px;
+        }
+
+        .success-state {
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .success-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 999px;
+            background: var(--success-soft);
+            color: var(--success);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+
+        .success-state h2 {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .success-state p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-shell">
+        <div class="brand-header">
+            <div class="brand-mark">H</div>
+            <h1>创建你的账号</h1>
+            <p>加入 HyperDesign，开启高效原型协作</p>
+        </div>
+
+        <div class="auth-card">
+            <div class="form-group">
+                <label>姓名</label>
+                <input type="text" placeholder="请输入你的姓名">
+            </div>
+
+            <div class="form-group">
+                <label>邮箱地址</label>
+                <input type="email" placeholder="请输入邮箱地址">
+            </div>
+
+            <div class="form-group">
+                <label>设置密码</label>
+                <input type="password" placeholder="至少8位，包含字母和数字">
+                <div class="password-strength">
+                    <div class="strength-bar active"></div>
+                    <div class="strength-bar active"></div>
+                    <div class="strength-bar active"></div>
+                    <div class="strength-bar"></div>
+                </div>
+                <div class="strength-text">密码强度：中等</div>
+            </div>
+
+            <div class="form-group">
+                <label>确认密码</label>
+                <input type="password" placeholder="再次输入密码">
+            </div>
+
+            <label class="agreement">
+                <input type="checkbox" checked>
+                <span>我已阅读并同意 <a href="#">服务条款</a> 和 <a href="#">隐私政策</a>，
+                并确认年满 18 周岁。</span>
+            </label>
+
+            <button class="btn-primary" onclick="showSuccess()">注册账号</button>
+
+            <div class="divider">
+                <div class="divider-line"></div>
+                <div class="divider-text">或使用以下方式注册</div>
+                <div class="divider-line"></div>
+            </div>
+
+            <div class="social-buttons">
+                <button class="social-btn">
+                    <span>📧</span>
+                    <span>Google</span>
+                </button>
+                <button class="social-btn">
+                    <span>💬</span>
+                    <span>微信</span>
+                </button>
+                <button class="social-btn">
+                    <span>🔷</span>
+                    <span>飞书</span>
+                </button>
+            </div>
+
+            <div class="login-prompt">
+                已有账号？
+                <a href="login.html">立即登录</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showSuccess() {
+            const card = document.querySelector('.auth-card');
+            card.innerHTML = `
+                <div class="success-state">
+                    <div class="success-icon">✓</div>
+                    <h2>注册成功！</h2>
+                    <p>
+                        验证邮件已发送至你的邮箱，请查收并点击邮件中的链接完成验证。
+                        验证后即可登录使用 HyperDesign。
+                    </p>
+                    <button class="btn-primary" onclick="window.location.href='login.html'">返回登录</button>
+                    <button class="btn-secondary" style="width:100%;height:44px;border:1px solid var(--border-light);border-radius:var(--radius-sm);font-size:14px;font-weight:600;background:var(--bg-surface);color:var(--text-secondary);cursor:pointer;margin-top:12px">重新发送邮件</button>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

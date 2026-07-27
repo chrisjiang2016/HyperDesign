@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>演示入口 - HyperDesign</title>
+    <style>
+        :root {
+            --bg-page: #f8fafc;
+            --bg-surface: #ffffff;
+            --bg-muted: #f6f8fb;
+            --bg-soft: #fafcff;
+            --text-primary: #111827;
+            --text-secondary: #475467;
+            --text-tertiary: #98a2b3;
+            --border-light: #eaecf0;
+            --border-soft: #eef2f6;
+            --brand: #2563eb;
+            --brand-hover: #1d4ed8;
+            --brand-soft: #eff6ff;
+            --success: #027a48;
+            --success-soft: #ecfdf3;
+            --warning: #c2410c;
+            --warning-soft: #fff7ed;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.08);
+            --shadow-md: 0 4px 8px rgba(16, 24, 40, 0.06), 0 6px 20px rgba(16, 24, 40, 0.12);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: var(--bg-page);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        a { color: inherit; text-decoration: none; }
+        button { font: inherit; }
+
+        .app-shell {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .topbar {
+            height: 64px;
+            background: rgba(255,255,255,.96);
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            backdrop-filter: blur(10px);
+        }
+
+        .topbar-left, .topbar-right, .brand, .breadcrumb, .metrics-row, .demo-path {
+            display: flex;
+            align-items: center;
+        }
+
+        .topbar-left, .topbar-right { gap: 16px; }
+
+        .brand {
+            gap: 10px;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .brand-mark {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            background: var(--brand);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+
+        .breadcrumb {
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-tertiary);
+        }
+
+        .breadcrumb .current {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .btn-primary, .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 42px;
+            padding: 0 20px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            gap: 8px;
+            border: none;
+            cursor: pointer;
+            transition: .18s ease;
+        }
+
+        .btn-primary {
+            background: var(--brand);
+            color: #fff;
+        }
+
+        .btn-primary:hover { background: var(--brand-hover); transform: translateY(-1px); }
+
+        .btn-secondary {
+            border: 1px solid var(--border-light);
+            background: var(--bg-surface);
+            color: var(--text-secondary);
+        }
+
+        .btn-secondary:hover { background: #f9fafb; }
+
+        .workspace {
+            min-height: calc(100vh - 64px);
+            padding: 40px 32px;
+            max-width: 1280px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .hero-section {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .hero-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            padding: 36px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: var(--brand-soft);
+            color: var(--brand);
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: .4px;
+            margin-bottom: 20px;
+        }
+
+        .hero-card h1 {
+            font-size: 38px;
+            font-weight: 800;
+            color: var(--text-primary);
+            line-height: 1.2;
+            margin-bottom: 12px;
+        }
+
+        .hero-card p {
+            font-size: 16px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            max-width: 620px;
+            margin-bottom: 28px;
+        }
+
+        .cta-row {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .metrics-card {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            color: white;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .metric {
+            background: rgba(255,255,255,.1);
+            border-radius: var(--radius-md);
+            padding: 18px;
+            backdrop-filter: blur(10px);
+        }
+
+        .metric .num {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+
+        .metric .label {
+            font-size: 13px;
+            opacity: .85;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin: 0 0 18px;
+        }
+
+        .section-header h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .section-header p {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .page-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 18px;
+            margin-bottom: 40px;
+        }
+
+        .page-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            transition: .2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .page-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--brand);
+        }
+
+        .page-card::after {
+            content: "";
+            position: absolute;
+            inset: auto -20px -20px auto;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--brand-soft);
+            opacity: .5;
+        }
+
+        .tag {
+            display: inline-flex;
+            padding: 5px 10px;
+            border-radius: 999px;
+            background: var(--bg-muted);
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-bottom: 14px;
+        }
+
+        .page-card h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .page-card p {
+            font-size: 14px;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            min-height: 72px;
+        }
+
+        .page-card .link {
+            margin-top: 14px;
+            font-size: 13px;
+            color: var(--brand);
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .info-panel {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: 24px;
+        }
+
+        .info-panel h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+        }
+
+        .info-panel ul {
+            padding-left: 22px;
+            color: var(--text-secondary);
+            line-height: 2;
+            font-size: 14px;
+        }
+
+        .demo-path {
+            gap: 8px;
+            padding: 12px 16px;
+            background: var(--brand-soft);
+            border-radius: var(--radius-sm);
+            margin-top: 20px;
+            font-size: 14px;
+            color: var(--brand);
+            font-weight: 500;
+        }
+
+        .path-step {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        @media (max-width: 1100px) {
+            .page-grid { grid-template-columns: repeat(2, 1fr); }
+            .hero-section { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 700px) {
+            .hero-card h1 { font-size: 28px; }
+            .page-grid, .metrics-card { grid-template-columns: 1fr; }
+            .workspace { padding: 24px 16px 40px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <header class="topbar">
+            <div class="topbar-left">
+                <a href="index.html" class="brand">
+                    <div class="brand-mark">H</div>
+                    <span>HyperDesign</span>
+                </a>
+                <div class="breadcrumb">
+                    <span>工作台</span>
+                    <span>/</span>
+                    <span class="current">演示入口</span>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <button class="btn-secondary" onclick="window.location.href='index.html'">返回首页</button>
+            </div>
+        </header>
+
+        <main class="workspace">
+            <section class="hero-section">
+                <div class="hero-card">
+                    <div class="eyebrow">📐 高保真演示入口</div>
+                    <h1>HyperDesign 产品级原型演示</h1>
+                    <p>
+                        这套原型已从"页面草稿"升级为"更接近正式产品演示版"。你可以直接从这里进入首页、项目管理、原型预览、评论与标注等核心场景，适合做产品评审、研发评审和方案讲解。
+                    </p>
+                    <div class="cta-row">
+                        <a class="btn-primary" href="index.html">进入首页演示 →</a>
+                        <a class="btn-secondary" href="prototype-viewer.html">查看核心预览页</a>
+                    </div>
+                    <div class="demo-path">
+                        <span class="path-step">💡 建议演示路径</span>
+                        <span>→</span>
+                        <span class="path-step">我的团队</span>
+                        <span>→</span>
+                        <span class="path-step">团队详情</span>
+                        <span>→</span>
+                        <span class="path-step">项目详情</span>
+                        <span>→</span>
+                        <span class="path-step">原型预览页</span>
+                    </div>
+                </div>
+                <div class="metrics-card">
+                    <div class="metric">
+                        <div class="num">8</div>
+                        <div class="label">核心页面</div>
+                    </div>
+                    <div class="metric">
+                        <div class="num">4</div>
+                        <div class="label">已统一侧边栏</div>
+                    </div>
+                    <div class="metric">
+                        <div class="num">1</div>
+                        <div class="label">统一演示入口</div>
+                    </div>
+                    <div class="metric">
+                        <div class="num">V2</div>
+                        <div class="label">可直接研发评审</div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="section-header">
+                <div>
+                    <h2>页面导航</h2>
+                    <p>按业务流程组织，方便你连续演示</p>
+                </div>
+            </div>
+
+            <section class="page-grid">
+                <a class="page-card" href="login.html">
+                    <div class="tag">账号</div>
+                    <h3>登录页</h3>
+                    <p>账号密码登录、忘记密码、注册链接入口。</p>
+                    <div class="link">打开页面 →</div>
+                </a>
+                <a class="page-card" href="register.html">
+                    <div class="tag">账号</div>
+                    <h3>注册页</h3>
+                    <p>用户名双输入确认、密码校验、基础注册反馈。</p>
+                    <div class="link">打开页面 →</div>
+                </a>
+                <a class="page-card" href="index.html">
+                    <div class="tag">团队</div>
+                    <h3>我的团队</h3>
+                    <p>团队总览、统计看板、快捷操作、最近活动。</p>
+                    <div class="link">打开页面 →</div>
+                </a>
+                <a class="page-card" href="team-detail.html">
+                    <div class="tag">团队</div>
+                    <h3>团队详情</h3>
+                    <p>项目与成员双标签页切换，支持管理操作入口。</p>
+                    <div class="link">打开页面 →</div>
+                </a>
+                <a class="page-card" href="project-detail.html">
+                    <div class="tag">项目</div>
+                    <h3>项目详情</h3>
+                    <p>原型资产列表、文件夹视图、上传、权限、分享入口。</p>
+                    <div class="link">打开页面 →</div>
+                </a>
+                <a class="page-card" href="prototype-viewer.html">
+                    <div class="tag">核心演示</div>
+                    <h3>原型预览页</h3>
+                    <p>页面树、设备切换、缩放、标注模式、评论协作。</p>
+                    <div class="link">打开页面 →</div>
+                </a>
+                <a class="page-card" href="user-settings.html">
+                    <div class="tag">设置</div>
+                    <h3>个人设置</h3>
+                    <p>账号信息、密码修改、安全操作。</p>
+                    <div class="link">打开页面 →</div>
+                </a>
+                <a class="page-card" href="forgot-password.html">
+                    <div class="tag">账号</div>
+                    <h3>忘记密码</h3>
+                    <p>邮箱验证、重置密码流程。</p>
+                    <div class="link">打开页面 →</div>
+                </a>
+            </section>
+
+            <div class="section-header">
+                <div>
+                    <h2>本轮优化说明</h2>
+                    <p>重点强化正式感、可演示性和产品感</p>
+                </div>
+            </div>
+            <section class="info-panel">
+                <h3>📌 已完成优化</h3>
+                <ul>
+                    <li>侧边栏统一为「团队 → 项目叶子节点」结构，去掉冗余入口与状态标签。</li>
+                    <li>首页升级为"数据看板 + 快捷入口 + 最近活动"的产品首页形态。</li>
+                    <li>项目详情页升级为"项目概览 + 资产管理 + 侧边信息"的正式工作台。</li>
+                    <li>原型预览页强化为"左侧页面树 + 中间画布 + 右侧检查器/评论"的专业评审界面。</li>
+                    <li>新增统一演示入口，方便你直接向团队展示整套原型。</li>
+                    <li>个人设置页统一为三栏工作台结构，包含资料、安全、账号概览等模块。</li>
+                    <li>所有页面视觉统一收敛到同一套浅色 SaaS 设计语言。</li>
+                </ul>
+            </section>
+        </main>
+    </div>
+</body>
+</html>

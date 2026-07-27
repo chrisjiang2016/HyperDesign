@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 - HTML 原型分享平台</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .register-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 420px;
+            padding: 48px 40px;
+            animation: slideUp 0.4s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .logo-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: white;
+            margin-bottom: 16px;
+        }
+
+        .logo h1 {
+            font-size: 24px;
+            color: #1a202c;
+            margin-bottom: 8px;
+        }
+
+        .logo p {
+            font-size: 14px;
+            color: #718096;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            background: #f7fafc;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group .hint {
+            font-size: 12px;
+            color: #718096;
+            margin-top: 4px;
+        }
+
+        .form-group.error input {
+            border-color: #fc8181;
+        }
+
+        .form-group .error-text {
+            font-size: 12px;
+            color: #c53030;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .form-group.error .error-text {
+            display: block;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            margin-top: 24px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .divider {
+            text-align: center;
+            margin: 32px 0;
+            position: relative;
+            color: #a0aec0;
+            font-size: 14px;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 40%;
+            height: 1px;
+            background: #e2e8f0;
+        }
+
+        .divider::before {
+            left: 0;
+        }
+
+        .divider::after {
+            right: 0;
+        }
+
+        .login-link {
+            text-align: center;
+            font-size: 14px;
+            color: #4a5568;
+        }
+
+        .login-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            margin-left: 4px;
+        }
+
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+
+        .terms {
+            font-size: 13px;
+            color: #718096;
+            margin-top: 16px;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        .terms a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .terms a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <div class="logo">
+            <div class="logo-icon">📐</div>
+            <h1>创建账号</h1>
+            <p>加入 HTML 原型分享平台</p>
+        </div>
+
+        <form id="registerForm">
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    name="username" 
+                    placeholder="字母或数字，5位以上"
+                    required
+                >
+                <div class="hint">仅支持英文字母或数字，长度5位以上</div>
+                <div class="error-text">用户名格式不正确</div>
+            </div>
+
+            <div class="form-group">
+                <label for="usernameConfirm">确认用户名</label>
+                <input 
+                    type="text" 
+                    id="usernameConfirm" 
+                    name="usernameConfirm" 
+                    placeholder="再次输入用户名"
+                    required
+                >
+                <div class="error-text">两次输入的用户名不一致</div>
+            </div>
+
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    placeholder="字母或数字，6位以上"
+                    required
+                >
+                <div class="hint">仅支持英文字母或数字，长度6位以上</div>
+                <div class="error-text">密码格式不正确</div>
+            </div>
+
+            <button type="submit" class="btn-primary">注册</button>
+
+            <div class="terms">
+                注册即表示您同意我们的 
+                <a href="#">服务条款</a> 和 <a href="#">隐私政策</a>
+            </div>
+        </form>
+
+        <div class="divider">或</div>
+
+        <div class="login-link">
+            已有账号？<a href="login.html">立即登录</a>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('registerForm');
+        const usernameInput = document.getElementById('username');
+        const usernameConfirmInput = document.getElementById('usernameConfirm');
+        const passwordInput = document.getElementById('password');
+
+        // 用户名验证
+        function validateUsername(value) {
+            const regex = /^[a-zA-Z0-9]{5,}$/;
+            return regex.test(value);
+        }
+
+        // 密码验证
+        function validatePassword(value) {
+            const regex = /^[a-zA-Z0-9]{6,}$/;
+            return regex.test(value);
+        }
+
+        // 添加实时验证
+        usernameInput.addEventListener('blur', function() {
+            const formGroup = this.parentElement;
+            if (!validateUsername(this.value)) {
+                formGroup.classList.add('error');
+            } else {
+                formGroup.classList.remove('error');
+            }
+        });
+
+        usernameConfirmInput.addEventListener('blur', function() {
+            const formGroup = this.parentElement;
+            if (this.value !== usernameInput.value) {
+                formGroup.classList.add('error');
+            } else {
+                formGroup.classList.remove('error');
+            }
+        });
+
+        passwordInput.addEventListener('blur', function() {
+            const formGroup = this.parentElement;
+            if (!validatePassword(this.value)) {
+                formGroup.classList.add('error');
+            } else {
+                formGroup.classList.remove('error');
+            }
+        });
+
+        // 表单提交
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const username = usernameInput.value;
+            const usernameConfirm = usernameConfirmInput.value;
+            const password = passwordInput.value;
+
+            let isValid = true;
+
+            // 验证用户名
+            if (!validateUsername(username)) {
+                usernameInput.parentElement.classList.add('error');
+                isValid = false;
+            } else {
+                usernameInput.parentElement.classList.remove('error');
+            }
+
+            // 验证用户名确认
+            if (username !== usernameConfirm) {
+                usernameConfirmInput.parentElement.classList.add('error');
+                isValid = false;
+            } else {
+                usernameConfirmInput.parentElement.classList.remove('error');
+            }
+
+            // 验证密码
+            if (!validatePassword(password)) {
+                passwordInput.parentElement.classList.add('error');
+                isValid = false;
+            } else {
+                passwordInput.parentElement.classList.remove('error');
+            }
+
+            if (isValid) {
+                // 注册成功，跳转到登录页
+                alert('注册成功！请登录');
+                window.location.href = 'login.html';
+            }
+        });
+    </script>
+</body>
+</html>

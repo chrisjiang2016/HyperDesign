@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的团队 - HTML 原型分享平台</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(180deg, #eef2ff 0%, #f8fafc 34%, #f5f7fa 100%);
+            min-height: 100vh;
+            color: #1a202c;
+        }
+        .navbar {
+            background: rgba(255,255,255,0.86);
+            backdrop-filter: blur(18px);
+            box-shadow: 0 8px 30px rgba(81, 99, 147, 0.08);
+            padding: 0 32px;
+            height: 68px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid rgba(226,232,240,.8);
+        }
+        .navbar-left,.navbar-right,.user-menu,.hero-actions,.stat-grid,.teams-grid,.activity-list{display:flex}
+        .navbar-left { align-items: center; gap: 32px; }
+        .logo {
+            display: flex; align-items: center; gap: 12px; font-size: 20px; font-weight: 800; color: #1a202c; text-decoration: none;
+        }
+        .logo-icon {
+            width: 42px; height: 42px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 10px 24px rgba(102,126,234,.32);
+        }
+        .nav-menu { display: flex; gap: 8px; list-style: none; }
+        .nav-item a {
+            display: block; padding: 10px 16px; color: #4a5568; text-decoration: none; border-radius: 10px; font-weight: 600; transition: .25s ease;
+        }
+        .nav-item a:hover,.nav-item.active a { background: #eef2ff; color: #5b66ea; }
+        .navbar-right { align-items: center; gap: 14px; }
+        .ghost-btn {
+            padding: 10px 14px; border: 1px solid #e2e8f0; background: #fff; border-radius: 12px; font-size: 14px; font-weight: 600; color: #4a5568; cursor: pointer; transition: .25s ease;
+        }
+        .ghost-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(0,0,0,.06); }
+        .user-menu { align-items: center; gap: 12px; padding: 8px 12px; border-radius: 12px; cursor: pointer; transition: background .2s; }
+        .user-menu:hover { background: #f7fafc; }
+        .user-avatar {
+            width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; box-shadow: 0 10px 24px rgba(102,126,234,.24);
+        }
+        .container { max-width: 1280px; margin: 0 auto; padding: 34px 32px 56px; }
+        .hero {
+            background: linear-gradient(135deg, #1f2444 0%, #3c4da8 48%, #6877ff 100%);
+            color: #fff; border-radius: 28px; padding: 34px; display: grid; grid-template-columns: 1.3fr .9fr; gap: 26px; box-shadow: 0 28px 70px rgba(55,70,140,.25); margin-bottom: 26px; position: relative; overflow: hidden;
+        }
+        .hero::after {
+            content: ""; position: absolute; width: 340px; height: 340px; border-radius: 50%; background: rgba(255,255,255,.08); right: -80px; top: -70px;
+        }
+        .eyebrow { display: inline-flex; padding: 8px 12px; border-radius: 999px; background: rgba(255,255,255,.12); font-size: 12px; letter-spacing: .4px; margin-bottom: 18px; }
+        .hero h1 { font-size: 34px; line-height: 1.2; margin-bottom: 14px; }
+        .hero p { font-size: 15px; line-height: 1.85; color: #e5e9ff; max-width: 720px; }
+        .hero-actions { gap: 12px; flex-wrap: wrap; margin-top: 24px; }
+        .btn-primary {
+            padding: 12px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; transition: .25s ease; box-shadow: 0 14px 30px rgba(102, 126, 234, 0.28);
+        }
+        .btn-primary.light { background: #fff; color: #334155; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 18px 34px rgba(102,126,234,.34); }
+        .hero-side {
+            background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); border-radius: 24px; padding: 22px; backdrop-filter: blur(16px);
+        }
+        .hero-side h3 { font-size: 18px; margin-bottom: 14px; }
+        .hero-side ul { list-style: none; display: grid; gap: 12px; color: #ebeeff; font-size: 14px; }
+        .hero-side li { padding: 12px 14px; border-radius: 14px; background: rgba(255,255,255,.08); }
+        .section-head { display: flex; justify-content: space-between; align-items: center; margin: 8px 0 18px; }
+        .section-head h2 { font-size: 24px; }
+        .section-head p { font-size: 14px; color: #718096; }
+        .stat-grid { gap: 18px; margin-bottom: 26px; }
+        .stat-card, .team-card, .activity-panel {
+            background: rgba(255,255,255,.88); backdrop-filter: blur(14px); border: 1px solid rgba(226,232,240,.8); border-radius: 22px; box-shadow: 0 14px 34px rgba(15,23,42,.05);
+        }
+        .stat-card { flex: 1; padding: 22px; }
+        .stat-card .label { font-size: 13px; color: #718096; margin-bottom: 12px; }
+        .stat-card .num { font-size: 34px; font-weight: 800; color: #2d3748; margin-bottom: 8px; }
+        .trend { font-size: 13px; color: #16a34a; font-weight: 700; }
+        .content-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 22px; }
+        .teams-grid { flex-wrap: wrap; gap: 20px; }
+        .team-card {
+            width: calc(50% - 10px); padding: 24px; transition: .28s ease; cursor: pointer; position: relative; overflow: hidden;
+        }
+        .team-card:hover { transform: translateY(-4px); box-shadow: 0 22px 40px rgba(15,23,42,.09); border-color: #c7d2fe; }
+        .team-card::after { content: ""; position: absolute; right: -24px; top: -20px; width: 110px; height: 110px; border-radius: 50%; background: rgba(102,126,234,.08); }
+        .team-icon {
+            width: 58px; height: 58px; border-radius: 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 18px; box-shadow: 0 12px 24px rgba(102,126,234,.22);
+        }
+        .team-card h3 { font-size: 19px; margin-bottom: 8px; }
+        .team-card p { font-size: 14px; color: #718096; margin-bottom: 18px; line-height: 1.75; }
+        .team-stats { display: flex; justify-content: space-between; gap: 14px; padding-top: 16px; border-top: 1px solid #edf2f7; }
+        .stat-item { font-size: 13px; color: #4a5568; display: flex; align-items: center; gap: 6px; }
+        .role-badge { display: inline-flex; padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; background: #eef2ff; color: #5b66ea; margin-bottom: 12px; }
+        .role-badge.admin { background: #fff4db; color: #c58913; }
+        .activity-panel { padding: 24px; }
+        .activity-panel h3 { font-size: 19px; margin-bottom: 18px; }
+        .activity-list { flex-direction: column; gap: 14px; }
+        .activity-item { display: flex; gap: 12px; padding: 14px; border-radius: 14px; background: #f8fafc; }
+        .activity-dot { width: 12px; height: 12px; border-radius: 50%; margin-top: 5px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .activity-item strong { display: block; font-size: 14px; margin-bottom: 4px; }
+        .activity-item span { font-size: 13px; color: #718096; line-height: 1.7; }
+        .modal {
+            display: none; position: fixed; z-index: 1000; inset: 0; background: rgba(15,23,42,.48); animation: fadeIn .24s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .modal-content {
+            background: white; margin: 8% auto; padding: 32px; border-radius: 24px; width: 90%; max-width: 520px; animation: modalSlideUp .3s ease; box-shadow: 0 30px 80px rgba(0,0,0,.2);
+        }
+        @keyframes modalSlideUp { from { opacity: 0; transform: translateY(36px); } to { opacity: 1; transform: translateY(0); } }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .modal-header h2 { font-size: 24px; }
+        .close { font-size: 28px; color: #a0aec0; cursor: pointer; line-height: 1; }
+        .close:hover { color: #4a5568; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-size: 14px; font-weight: 600; color: #2d3748; margin-bottom: 8px; }
+        .form-group input,.form-group textarea {
+            width: 100%; padding: 13px 16px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 15px; transition: .25s ease; background: #f8fafc; font-family: inherit;
+        }
+        .form-group input:focus,.form-group textarea:focus { outline: none; border-color: #667eea; background: #fff; box-shadow: 0 0 0 3px rgba(102,126,234,.1); }
+        .form-group textarea { resize: vertical; min-height: 110px; }
+        .modal-buttons { display: flex; gap: 12px; justify-content: flex-end; margin-top: 28px; }
+        .btn-secondary {
+            padding: 12px 18px; background: #eef2f7; color: #4a5568; border: none; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer;
+        }
+        .btn-secondary:hover { background: #dde5ef; }
+        @media (max-width: 1080px) {
+            .hero,.content-grid{grid-template-columns:1fr}
+            .teams-grid{display:grid;grid-template-columns:1fr 1fr}
+        }
+        @media (max-width: 720px) {
+            .container{padding:24px 16px 40px}.navbar{padding:0 16px}.nav-menu{display:none}.stat-grid,.teams-grid{display:grid;grid-template-columns:1fr}.team-card{width:100%}.hero h1{font-size:28px}
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-left">
+            <a href="demo.html" class="logo">
+                <div class="logo-icon">📐</div>
+                HTML 原型平台
+            </a>
+            <ul class="nav-menu">
+                <li class="nav-item active"><a href="index.html">我的团队</a></li>
+                <li class="nav-item"><a href="team-detail.html">项目</a></li>
+                <li class="nav-item"><a href="prototype-viewer.html">原型预览</a></li>
+            </ul>
+        </div>
+        <div class="navbar-right">
+            <button class="ghost-btn" onclick="window.location.href='demo.html'">演示入口</button>
+            <div class="user-menu" onclick="window.location.href='user-settings.html'">
+                <div class="user-avatar">A</div>
+                <div>
+                    <div style="font-size:14px;font-weight:700;">Admin</div>
+                    <div style="font-size:12px;color:#718096;">管理员</div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <section class="hero">
+            <div>
+                <div class="eyebrow">团队工作台</div>
+                <h1>统一管理团队原型、评审进度与协作动态</h1>
+                <p>
+                    在一个平台里完成团队原型上传、权限控制、评审协作和开发交接。你可以从这里快速进入重点项目、查看最近活动，并发起新的团队或项目管理动作。
+                </p>
+                <div class="hero-actions">
+                    <button class="btn-primary light" onclick="openCreateTeamModal()">+ 创建团队</button>
+                    <button class="btn-primary" onclick="window.location.href='prototype-viewer.html'">查看核心演示页</button>
+                </div>
+            </div>
+            <div class="hero-side">
+                <h3>今日重点</h3>
+                <ul>
+                    <li>✅ 原型首页、项目页、预览页已升级为正式演示风格</li>
+                    <li>📌 当前建议优先演示「首页 → 项目详情 → 原型预览页」</li>
+                    <li>🚀 可直接用于产品评审、研发评审、方案讲解</li>
+                </ul>
+            </div>
+        </section>
+
+        <div class="stat-grid">
+            <div class="stat-card"><div class="label">我参与的团队</div><div class="num">3</div><div class="trend">较上周 +1 个协作团队</div></div>
+            <div class="stat-card"><div class="label">进行中项目</div><div class="num">11</div><div class="trend">本周新增 2 个原型项目</div></div>
+            <div class="stat-card"><div class="label">待评审原型</div><div class="num">18</div><div class="trend">其中 6 个等待研发确认</div></div>
+            <div class="stat-card"><div class="label">评论与反馈</div><div class="num">46</div><div class="trend">今日新增 9 条评审意见</div></div>
+        </div>
+
+        <div class="section-head">
+            <div>
+                <h2>我的团队</h2>
+                <p>优先展示最近活跃团队，便于快速进入</p>
+            </div>
+            <button class="btn-primary" onclick="openCreateTeamModal()">+ 创建团队</button>
+        </div>
+
+        <div class="content-grid">
+            <div class="teams-grid">
+                <div class="team-card" onclick="window.location.href='team-detail.html'">
+                    <div class="team-icon">🚀</div>
+                    <span class="role-badge admin">管理员</span>
+                    <h3>产品设计团队</h3>
+                    <p>负责产品原型设计、评审协同与研发交付，当前重点项目为电商平台改版与 CRM 系统升级。</p>
+                    <div class="team-stats">
+                        <div class="stat-item">👥 12 成员</div>
+                        <div class="stat-item">📁 8 项目</div>
+                        <div class="stat-item">📝 26 反馈</div>
+                    </div>
+                </div>
+                <div class="team-card" onclick="window.location.href='team-detail.html'">
+                    <div class="team-icon">💻</div>
+                    <span class="role-badge">成员</span>
+                    <h3>技术研发团队</h3>
+                    <p>重点跟进原型实现、样式还原与前端联调，当前有多个高保真原型等待研发评估。</p>
+                    <div class="team-stats">
+                        <div class="stat-item">👥 25 成员</div>
+                        <div class="stat-item">📁 15 项目</div>
+                        <div class="stat-item">🧩 9 联调中</div>
+                    </div>
+                </div>
+                <div class="team-card" onclick="window.location.href='team-detail.html'">
+                    <div class="team-icon">🎨</div>
+                    <span class="role-badge">成员</span>
+                    <h3>UI / UX 设计组</h3>
+                    <p>沉淀视觉规范、体验评审与设计协作，支持原型方案的视觉打磨和设计验收。</p>
+                    <div class="team-stats">
+                        <div class="stat-item">👥 8 成员</div>
+                        <div class="stat-item">📁 20 项目</div>
+                        <div class="stat-item">✨ 5 视觉升级</div>
+                    </div>
+                </div>
+                <div class="team-card" onclick="window.location.href='team-detail.html'">
+                    <div class="team-icon">📊</div>
+                    <span class="role-badge">成员</span>
+                    <h3>数据分析协作组</h3>
+                    <p>负责数据看板、大屏可视化和业务分析类原型，强调数据逻辑与展示表现的统一。</p>
+                    <div class="team-stats">
+                        <div class="stat-item">👥 6 成员</div>
+                        <div class="stat-item">📁 4 项目</div>
+                        <div class="stat-item">📈 3 大屏方案</div>
+                    </div>
+                </div>
+            </div>
+
+            <aside class="activity-panel">
+                <h3>最近活动</h3>
+                <div class="activity-list">
+                    <div class="activity-item"><div class="activity-dot"></div><div><strong>首页改版方案 V2.0 收到新评论</strong><span>张三在原型预览页中新增 2 条研发实现反馈 · 10 分钟前</span></div></div>
+                    <div class="activity-item"><div class="activity-dot"></div><div><strong>电商平台改版项目新增 ZIP 包</strong><span>Admin 上传了新的高保真 HTML 原型，已完成页面目录识别 · 38 分钟前</span></div></div>
+                    <div class="activity-item"><div class="activity-dot"></div><div><strong>技术研发团队加入新成员</strong><span>李四已加入团队，可参与指定项目的原型评审与联调 · 2 小时前</span></div></div>
+                    <div class="activity-item"><div class="activity-dot"></div><div><strong>分享链接已被访问</strong><span>客户管理系统原型的外部评审链接新增 3 次访问记录 · 今天 14:20</span></div></div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <div id="createTeamModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>创建新团队</h2>
+                <span class="close" onclick="closeCreateTeamModal()">&times;</span>
+            </div>
+            <form id="createTeamForm">
+                <div class="form-group">
+                    <label for="teamName">团队名称 *</label>
+                    <input type="text" id="teamName" placeholder="请输入团队名称" required>
+                </div>
+                <div class="form-group">
+                    <label for="teamDesc">团队描述</label>
+                    <textarea id="teamDesc" placeholder="简要描述团队的职责、边界和协作目标（可选）"></textarea>
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" class="btn-secondary" onclick="closeCreateTeamModal()">取消</button>
+                    <button type="submit" class="btn-primary">创建团队</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openCreateTeamModal() {
+            document.getElementById('createTeamModal').style.display = 'block';
+        }
+        function closeCreateTeamModal() {
+            document.getElementById('createTeamModal').style.display = 'none';
+        }
+        document.getElementById('createTeamForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const teamName = document.getElementById('teamName').value;
+            if (teamName) {
+                alert('团队创建成功：' + teamName);
+                closeCreateTeamModal();
+            }
+        });
+        window.onclick = function(event) {
+            const modal = document.getElementById('createTeamModal');
+            if (event.target === modal) closeCreateTeamModal();
+        }
+    </script>
+</body>
+</html>

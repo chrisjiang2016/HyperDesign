@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的团队 - HyperDesign</title>
+    <style>
+        :root {
+            --bg-page: #f8fafc;
+            --bg-surface: #ffffff;
+            --bg-muted: #f6f8fb;
+            --bg-soft: #fafcff;
+            --text-primary: #111827;
+            --text-secondary: #475467;
+            --text-tertiary: #98a2b3;
+            --border-light: #eaecf0;
+            --border-soft: #eef2f6;
+            --brand: #2563eb;
+            --brand-hover: #1d4ed8;
+            --brand-soft: #eff6ff;
+            --success-soft: #ecfdf3;
+            --success-text: #027a48;
+            --warning-soft: #fff7ed;
+            --warning-text: #c2410c;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.08);
+            --sidebar-width: 232px;
+            --rightbar-width: 304px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: var(--bg-page);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        a { color: inherit; text-decoration: none; }
+        button, input, textarea { font: inherit; }
+
+        .app-shell {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .topbar {
+            height: 64px;
+            background: rgba(255,255,255,.96);
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            backdrop-filter: blur(10px);
+        }
+
+        .topbar-left, .topbar-right, .brand, .breadcrumb, .search-inline, .workspace-meta, .page-toolbar, .hero-actions, .summary-meta, .stat-row, .team-meta, .activity-item, .user-entry {
+            display: flex;
+            align-items: center;
+        }
+
+        .topbar-left, .topbar-right { gap: 16px; }
+
+        .brand {
+            gap: 10px;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .brand-mark {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            background: var(--brand);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+
+        .breadcrumb {
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-tertiary);
+        }
+
+        .breadcrumb .current {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .search-inline {
+            width: 280px;
+            height: 40px;
+            gap: 8px;
+            border: 1px solid var(--border-light);
+            border-radius: 10px;
+            padding: 0 12px;
+            background: var(--bg-surface);
+            color: var(--text-tertiary);
+        }
+
+        .search-inline input {
+            width: 100%;
+            border: none;
+            outline: none;
+            background: transparent;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .icon-btn, .avatar-btn, .btn-primary, .btn-secondary, .btn-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: .18s ease;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: 1px solid var(--border-light);
+            background: var(--bg-surface);
+            color: var(--text-secondary);
+        }
+
+        .icon-btn:hover { background: #f9fafb; border-color: #d0d5dd; }
+
+        .avatar-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 999px;
+            border: none;
+            background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+            color: #fff;
+            font-weight: 700;
+        }
+
+        .btn-primary, .btn-secondary {
+            height: 40px;
+            padding: 0 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            border: none;
+            background: var(--brand);
+            color: #fff;
+        }
+
+        .btn-primary:hover { background: var(--brand-hover); }
+
+        .btn-secondary {
+            border: 1px solid var(--border-light);
+            background: var(--bg-surface);
+            color: var(--text-secondary);
+        }
+
+        .btn-secondary:hover { background: #f9fafb; }
+
+        .btn-link {
+            border: none;
+            background: transparent;
+            color: var(--brand);
+            font-size: 14px;
+            font-weight: 600;
+            padding: 0;
+        }
+
+        .workspace {
+            display: grid;
+            grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--rightbar-width);
+            min-height: calc(100vh - 64px);
+        }
+
+        .sidebar, .rightbar {
+            background: var(--bg-surface);
+        }
+
+        .sidebar {
+            border-right: 1px solid var(--border-light);
+            padding: 22px 16px;
+        }
+
+        .rightbar {
+            border-left: 1px solid var(--border-light);
+            padding: 24px 20px;
+        }
+
+        .sidebar-group + .sidebar-group,
+        .rightbar-section + .rightbar-section {
+            margin-top: 24px;
+        }
+
+        .sidebar-label, .rightbar-title {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            padding: 0 10px;
+            margin-bottom: 10px;
+        }
+
+        .nav-list {
+            list-style: none;
+            display: grid;
+            gap: 6px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            cursor: pointer;
+            transition: .18s ease;
+        }
+
+        .nav-item:hover { background: var(--bg-muted); }
+        .nav-item.active {
+            background: var(--brand-soft);
+            color: var(--brand);
+            font-weight: 600;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: #cbd5e1;
+        }
+
+        .nav-item.active .nav-dot { background: var(--brand); }
+
+        /* === Tree navigation: 团队 → 项目 → 原型 === */
+        .nav-tree {
+            list-style: none;
+            display: grid;
+            gap: 2px;
+        }
+
+        .nav-tree-group {
+            list-style: none;
+            display: grid;
+            gap: 2px;
+        }
+
+        .nav-parent {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 10px;
+            border-radius: 10px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+            transition: .18s ease;
+        }
+        .nav-parent:hover { background: var(--bg-muted); }
+
+        .nav-parent .caret {
+            width: 14px;
+            height: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-tertiary);
+            font-size: 11px;
+            transition: transform .18s ease;
+            flex-shrink: 0;
+        }
+        .nav-tree-group.collapsed .caret { transform: rotate(-90deg); }
+        .nav-tree-group.collapsed > .nav-children { display: none; }
+
+        .nav-children {
+            list-style: none;
+            display: grid;
+            gap: 2px;
+            margin: 2px 0 6px 14px;
+            padding-left: 10px;
+            border-left: 1px dashed var(--border-light);
+        }
+
+        .nav-child {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 10px;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 13px;
+            cursor: pointer;
+            transition: .18s ease;
+        }
+        .nav-child:hover { background: var(--bg-muted); color: var(--text-primary); }
+        .nav-child.active {
+            background: var(--brand-soft);
+            color: var(--brand);
+            font-weight: 600;
+        }
+
+        .nav-level-icon {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+            color: var(--text-tertiary);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .nav-child.active .nav-level-icon { color: var(--brand); }
+        .nav-parent .nav-level-icon { color: var(--text-tertiary); }
+
+        .team-color {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            flex-shrink: 0;
+        }
+
+        .nav-meta {
+            margin-left: auto;
+            font-size: 11px;
+            color: var(--text-tertiary);
+            font-weight: 400;
+        }
+        .nav-child.active .nav-meta { color: var(--brand); opacity: .85; }
+
+        .sidebar-card {
+            border: 1px solid var(--border-soft);
+            border-radius: 12px;
+            background: var(--bg-soft);
+            padding: 14px;
+        }
+
+        .sidebar-card strong {
+            display: block;
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+
+        .sidebar-card p {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.75;
+        }
+
+        .main-content {
+            padding: 28px 32px 36px;
+        }
+
+        .workspace-meta {
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 16px;
+            color: var(--text-tertiary);
+            font-size: 13px;
+        }
+
+        .workspace-meta strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .hero-panel {
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            background: var(--bg-surface);
+            padding: 24px;
+            margin-bottom: 16px;
+        }
+
+        .hero-panel h1 {
+            font-size: 28px;
+            line-height: 1.2;
+            margin-bottom: 10px;
+        }
+
+        .hero-panel p {
+            font-size: 14px;
+            line-height: 1.85;
+            color: var(--text-secondary);
+            max-width: 760px;
+        }
+
+        .hero-actions {
+            gap: 10px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+            margin-bottom: 22px;
+        }
+
+        .summary-card, .section-panel, .team-card, .activity-card {
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            background: var(--bg-surface);
+        }
+
+        .summary-card {
+            padding: 18px;
+        }
+
+        .summary-label {
+            font-size: 13px;
+            color: var(--text-tertiary);
+            margin-bottom: 12px;
+        }
+
+        .summary-value {
+            font-size: 30px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .summary-meta {
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            flex-wrap: wrap;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            height: 24px;
+            padding: 0 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-pill.success {
+            background: var(--success-soft);
+            color: var(--success-text);
+        }
+
+        .status-pill.warning {
+            background: var(--warning-soft);
+            color: var(--warning-text);
+        }
+
+        .section-panel {
+            padding: 22px;
+        }
+
+        .page-toolbar {
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        .page-toolbar h2 {
+            font-size: 22px;
+            margin-bottom: 6px;
+        }
+
+        .page-toolbar p {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .team-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .team-card {
+            padding: 20px;
+            cursor: pointer;
+            transition: .18s ease;
+        }
+
+        .team-card:hover {
+            border-color: #dbe4ff;
+            background: #fbfdff;
+        }
+
+        .team-role {
+            display: inline-flex;
+            align-items: center;
+            height: 26px;
+            padding: 0 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 14px;
+            background: var(--brand-soft);
+            color: var(--brand);
+        }
+
+        .team-role.admin {
+            background: var(--warning-soft);
+            color: var(--warning-text);
+        }
+
+        .team-card h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+
+        .team-card p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.8;
+            margin-bottom: 16px;
+        }
+
+        .stat-row {
+            justify-content: space-between;
+            gap: 10px;
+            padding-top: 14px;
+            border-top: 1px solid var(--border-soft);
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .activity-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .activity-card {
+            padding: 14px;
+            background: #fbfcfe;
+        }
+
+        .activity-item {
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .activity-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            margin-top: 6px;
+            background: var(--brand);
+            flex-shrink: 0;
+        }
+
+        .activity-item strong {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .activity-item span {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        .user-entry {
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+
+        .user-entry:hover { background: var(--bg-muted); }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.32);
+        }
+
+        .modal-content {
+            width: 100%;
+            max-width: 520px;
+            margin: 8vh auto 0;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 22px;
+        }
+
+        .modal-header h2 {
+            font-size: 22px;
+        }
+
+        .close {
+            font-size: 24px;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            border: 1px solid var(--border-light);
+            border-radius: 10px;
+            padding: 12px 14px;
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            outline: none;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            border-color: #93c5fd;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+        }
+
+        .form-group textarea {
+            min-height: 110px;
+            resize: vertical;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 24px;
+        }
+
+        @media (max-width: 1180px) {
+            .workspace { grid-template-columns: 220px minmax(0, 1fr); }
+            .rightbar { display: none; }
+            .summary-grid { grid-template-columns: 1fr 1fr; }
+            .team-grid { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 860px) {
+            .topbar { padding: 0 16px; }
+            .breadcrumb, .search-inline, .sidebar { display: none; }
+            .workspace { grid-template-columns: 1fr; }
+            .main-content { padding: 20px 16px 28px; }
+            .summary-grid { grid-template-columns: 1fr; }
+            .page-toolbar { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <header class="topbar">
+            <div class="topbar-left">
+                <a href="demo.html" class="brand">
+                    <div class="brand-mark">H</div>
+                    <span>HyperDesign</span>
+                </a>
+                <div class="breadcrumb">
+                    <span>工作台</span>
+                    <span>/</span>
+                    <span class="current">我的团队</span>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <label class="search-inline">
+                    <span>⌕</span>
+                    <input type="text" placeholder="搜索团队、项目、原型文件">
+                </label>
+                <button class="icon-btn" title="通知">◌</button>
+                <div class="user-entry" onclick="window.location.href='user-settings.html'">
+                    <button class="avatar-btn">A</button>
+                    <div>
+                        <div style="font-size:14px;font-weight:600;">Admin</div>
+                        <div style="font-size:12px;color:var(--text-tertiary);">管理员</div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="workspace">
+            <aside class="sidebar">
+                <div class="sidebar-group">
+                    <div class="sidebar-label">工作台</div>
+                    <ul class="nav-tree" id="navTree">
+
+                        <!-- 我的团队（顶层：可折叠） -->
+                        <li class="nav-tree-group" data-group="my-teams">
+                            <div class="nav-parent" onclick="toggleNavGroup(this)">
+                                <span class="caret">▾</span>
+                                <span class="nav-level-icon">👥</span>
+                                <span>我的团队</span>
+                                <span class="nav-meta">3</span>
+                            </div>
+                            <ul class="nav-children">
+
+                                <!-- 团队 1：产品设计团队（默认展开） -->
+                                <li class="nav-tree-group" data-group="team-product">
+                                    <div class="nav-parent" onclick="toggleNavGroup(this)">
+                                        <span class="caret">▾</span>
+                                        <span class="team-color" style="background:#6366f1"></span>
+                                        <span>产品设计团队</span>
+                                        <span class="nav-meta">8</span>
+                                    </div>
+                                    <ul class="nav-children">
+                                        <li class="nav-child" onclick="window.location.href='project-detail.html'">
+                                            <span class="nav-level-icon">📁</span>
+                                            <span>电商平台改版</span>
+                                        </li>
+                                        <li class="nav-child" onclick="window.location.href='project-detail.html?p=crm'">
+                                            <span class="nav-level-icon">📁</span>
+                                            <span>CRM 系统升级</span>
+                                        </li>
+                                        <li class="nav-child" onclick="window.location.href='project-detail.html?p=viz'">
+                                            <span class="nav-level-icon">📁</span>
+                                            <span>可视化大屏项目</span>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                                <!-- 团队 2：技术研发团队（默认收起） -->
+                                <li class="nav-tree-group collapsed" data-group="team-tech">
+                                    <div class="nav-parent" onclick="toggleNavGroup(this)">
+                                        <span class="caret">▾</span>
+                                        <span class="team-color" style="background:#10b981"></span>
+                                        <span>技术研发团队</span>
+                                        <span class="nav-meta">15</span>
+                                    </div>
+                                    <ul class="nav-children">
+                                        <li class="nav-child" onclick="window.location.href='project-detail.html?team=tech'">
+                                            <span class="nav-level-icon">📁</span>
+                                            <span>项目列表</span>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                                <!-- 团队 3：视觉设计中心（默认收起） -->
+                                <li class="nav-tree-group collapsed" data-group="team-visual">
+                                    <div class="nav-parent" onclick="toggleNavGroup(this)">
+                                        <span class="caret">▾</span>
+                                        <span class="team-color" style="background:#f59e0b"></span>
+                                        <span>视觉设计中心</span>
+                                        <span class="nav-meta">20</span>
+                                    </div>
+                                    <ul class="nav-children">
+                                        <li class="nav-child" onclick="window.location.href='project-detail.html?team=visual'">
+                                            <span class="nav-level-icon">📁</span>
+                                            <span>项目列表</span>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                            </ul>
+                        </li>
+
+                    </ul>
+                </div>
+
+                <div class="sidebar-group">
+                    <div class="sidebar-label">常用</div>
+                    <ul class="nav-tree">
+                        <li class="nav-tree-group" data-group="fav">
+                            <div class="nav-parent" onclick="toggleNavGroup(this)">
+                                <span class="caret">▾</span>
+                                <span class="nav-level-icon">⭐</span>
+                                <span>收藏与最近</span>
+                                <span class="nav-meta">5</span>
+                            </div>
+                            <ul class="nav-children">
+                                <li class="nav-child" onclick="window.location.href='project-detail.html'">
+                                    <span class="nav-level-icon">📁</span>
+                                    <span>电商平台改版</span>
+                                </li>
+                                <li class="nav-child" onclick="window.location.href='prototype-viewer.html'">
+                                    <span class="nav-level-icon">🖼</span>
+                                    <span>首页原型</span>
+                                </li>
+                                <li class="nav-child" onclick="window.location.href='team-detail.html#members'">
+                                    <span class="nav-level-icon">👤</span>
+                                    <span>团队成员</span>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </aside>
+
+            <main class="main-content">
+                <div class="workspace-meta">
+                    <span>当前空间：<strong>产品设计团队</strong></span>
+                    <span>最近同步：今天 18:20</span>
+                </div>
+
+                <section class="hero-panel">
+                    <h1>统一管理团队原型、评审进度与协作动态</h1>
+                    <p>在同一套工作台里完成团队管理、项目推进、原型评审和研发交接。当前首页聚焦最近活跃团队与关键协作动态，减少无关装饰，让信息更直接。</p>
+                    <div class="hero-actions">
+                        <button class="btn-primary" onclick="openCreateTeamModal()">创建团队</button>
+                        <button class="btn-secondary" onclick="window.location.href='prototype-viewer.html'">查看核心演示页</button>
+                    </div>
+                </section>
+
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <div class="summary-label">我参与的团队</div>
+                        <div class="summary-value">3</div>
+                        <div class="summary-meta">
+                            <span class="status-pill success">较上周 +1</span>
+                            <span>新增协作团队</span>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">进行中项目</div>
+                        <div class="summary-value">11</div>
+                        <div class="summary-meta">
+                            <span class="status-pill success">本周 +2</span>
+                            <span>新增原型项目</span>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">待评审原型</div>
+                        <div class="summary-value">18</div>
+                        <div class="summary-meta">
+                            <span class="status-pill warning">6 个待研发确认</span>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">评论与反馈</div>
+                        <div class="summary-value">46</div>
+                        <div class="summary-meta">
+                            <span>今日新增 9 条评审意见</span>
+                        </div>
+                    </div>
+                </div>
+
+                <section class="section-panel">
+                    <div class="page-toolbar">
+                        <div>
+                            <h2>我的团队</h2>
+                            <p>优先展示最近活跃团队，便于快速进入后续项目与原型查看流程。</p>
+                        </div>
+                        <button class="btn-primary" onclick="openCreateTeamModal()">创建团队</button>
+                    </div>
+
+                    <div class="team-grid">
+                        <div class="team-card" onclick="window.location.href='team-detail.html'">
+                            <span class="team-role admin">管理员</span>
+                            <h3>产品设计团队</h3>
+                            <p>负责产品原型设计、评审协同与研发交付，当前重点项目为电商平台改版与 CRM 系统升级。</p>
+                            <div class="stat-row">
+                                <span class="stat-item">12 成员</span>
+                                <span class="stat-item">8 项目</span>
+                                <span class="stat-item">26 条反馈</span>
+                            </div>
+                        </div>
+                        <div class="team-card" onclick="window.location.href='team-detail.html'">
+                            <span class="team-role">成员</span>
+                            <h3>技术研发团队</h3>
+                            <p>重点跟进原型实现、样式还原与前端联调，当前有多个高保真原型等待研发评估。</p>
+                            <div class="stat-row">
+                                <span class="stat-item">25 成员</span>
+                                <span class="stat-item">15 项目</span>
+                                <span class="stat-item">9 个联调中</span>
+                            </div>
+                        </div>
+                        <div class="team-card" onclick="window.location.href='team-detail.html'">
+                            <span class="team-role">成员</span>
+                            <h3>UI / UX 设计组</h3>
+                            <p>沉淀视觉规范、体验评审与设计协作，支持原型方案的视觉打磨和设计验收。</p>
+                            <div class="stat-row">
+                                <span class="stat-item">8 成员</span>
+                                <span class="stat-item">20 项目</span>
+                                <span class="stat-item">5 个视觉升级</span>
+                            </div>
+                        </div>
+                        <div class="team-card" onclick="window.location.href='team-detail.html'">
+                            <span class="team-role">成员</span>
+                            <h3>数据分析协作组</h3>
+                            <p>负责数据看板、大屏可视化和业务分析类原型，强调数据逻辑与展示表现的统一。</p>
+                            <div class="stat-row">
+                                <span class="stat-item">6 成员</span>
+                                <span class="stat-item">4 项目</span>
+                                <span class="stat-item">3 个大屏方案</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            <aside class="rightbar">
+                <div class="rightbar-section">
+                    <div class="rightbar-title">最近活动</div>
+                    <div class="activity-list">
+                        <div class="activity-card">
+                            <div class="activity-item">
+                                <div class="activity-dot"></div>
+                                <div>
+                                    <strong>首页改版方案 V2.0 收到新评论</strong>
+                                    <span>张三在原型预览页中新增 2 条研发实现反馈 · 10 分钟前</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="activity-card">
+                            <div class="activity-item">
+                                <div class="activity-dot"></div>
+                                <div>
+                                    <strong>电商平台改版项目新增 ZIP 包</strong>
+                                    <span>Admin 上传了新的高保真 HTML 原型，已完成页面目录识别 · 38 分钟前</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="activity-card">
+                            <div class="activity-item">
+                                <div class="activity-dot"></div>
+                                <div>
+                                    <strong>技术研发团队加入新成员</strong>
+                                    <span>李四已加入团队，可参与指定项目的原型评审与联调 · 2 小时前</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="activity-card">
+                            <div class="activity-item">
+                                <div class="activity-dot"></div>
+                                <div>
+                                    <strong>分享链接已被访问</strong>
+                                    <span>客户管理系统原型的外部评审链接新增 3 次访问记录 · 今天 14:20</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rightbar-section">
+                    <div class="rightbar-title">协作建议</div>
+                    <div class="sidebar-card">
+                        <strong>建议下一步</strong>
+                        <p>继续统一 `team-detail`、`user-settings` 与登录注册页，形成从工作台到账号体系的完整一致风格。</p>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <div id="createTeamModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>创建新团队</h2>
+                <span class="close" onclick="closeCreateTeamModal()">&times;</span>
+            </div>
+            <form id="createTeamForm">
+                <div class="form-group">
+                    <label for="teamName">团队名称 *</label>
+                    <input type="text" id="teamName" placeholder="请输入团队名称" required>
+                </div>
+                <div class="form-group">
+                    <label for="teamDesc">团队描述</label>
+                    <textarea id="teamDesc" placeholder="简要描述团队职责与协作目标（可选）"></textarea>
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" class="btn-secondary" onclick="closeCreateTeamModal()">取消</button>
+                    <button type="submit" class="btn-primary">创建团队</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // === 树状侧边栏：展开/收起 + 状态记忆 ===
+        function toggleNavGroup(el) {
+            const group = el.parentElement;
+            if (!group || !group.classList.contains('nav-tree-group')) return;
+            group.classList.toggle('collapsed');
+            persistNavState();
+        }
+
+        function persistNavState() {
+            try {
+                const state = {};
+                document.querySelectorAll('.nav-tree-group[data-group]').forEach(function(g) {
+                    state[g.getAttribute('data-group')] = g.classList.contains('collapsed');
+                });
+                localStorage.setItem('hyperdesign.navState', JSON.stringify(state));
+            } catch (e) {}
+        }
+
+        function restoreNavState() {
+            try {
+                const raw = localStorage.getItem('hyperdesign.navState');
+                if (!raw) return;
+                const state = JSON.parse(raw);
+                Object.keys(state).forEach(function(key) {
+                    if (state[key]) {
+                        const g = document.querySelector('.nav-tree-group[data-group="' + key + '"]');
+                        if (g) g.classList.add('collapsed');
+                    }
+                });
+            } catch (e) {}
+        }
+
+        // 活动节点高亮（从 URL 识别）
+        function highlightActiveNav() {
+            const path = window.location.pathname.split('/').pop() || 'index.html';
+            const hash = window.location.hash || '';
+            document.querySelectorAll('.nav-child').forEach(function(el) {
+                el.classList.remove('active');
+                const onclick = el.getAttribute('onclick') || '';
+                if (onclick.indexOf("'" + path + "'") >= 0) {
+                    if (!hash || onclick.indexOf(hash) >= 0) {
+                        el.classList.add('active');
+                    }
+                }
+            });
+        }
+
+        function openCreateTeamModal() {
+            document.getElementById('createTeamModal').style.display = 'block';
+        }
+
+        function closeCreateTeamModal() {
+            document.getElementById('createTeamModal').style.display = 'none';
+        }
+
+        document.getElementById('createTeamForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const teamName = document.getElementById('teamName').value.trim();
+            if (!teamName) return;
+            alert('团队创建成功：' + teamName + '\n（当前为高保真原型演示）');
+            closeCreateTeamModal();
+        });
+
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('createTeamModal');
+            if (event.target === modal) closeCreateTeamModal();
+        });
+
+        // 初始化树状菜单
+        restoreNavState();
+        highlightActiveNav();
+    </script>
+</body>
+</html>

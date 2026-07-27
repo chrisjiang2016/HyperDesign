@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>原型预览 - HyperDesign</title>
+    <style>
+        :root {
+            --bg-page: #f8fafc;
+            --bg-surface: #ffffff;
+            --bg-muted: #f6f8fb;
+            --bg-soft: #fafcff;
+            --text-primary: #111827;
+            --text-secondary: #475467;
+            --text-tertiary: #98a2b3;
+            --border-light: #eaecf0;
+            --border-soft: #eef2f6;
+            --brand: #2563eb;
+            --brand-hover: #1d4ed8;
+            --brand-soft: #eff6ff;
+            --success-soft: #ecfdf3;
+            --success-text: #027a48;
+            --warning-soft: #fff7ed;
+            --warning-text: #c2410c;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.08);
+            --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08);
+            --sidebar-width: 240px;
+            --rightbar-width: 340px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: var(--bg-page);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        button, input, textarea { font: inherit; }
+        a { color: inherit; text-decoration: none; }
+
+        .app-shell {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .topbar {
+            height: 64px;
+            background: rgba(255,255,255,.96);
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            backdrop-filter: blur(10px);
+        }
+
+        .topbar-left, .topbar-right, .viewer-meta, .toolbar-left, .toolbar-right, .device-switch, .page-row-meta, .comment-header, .comment-actions, .reply-header, .inspector-row, .inspector-spec-grid {
+            display: flex;
+            align-items: center;
+        }
+
+        .topbar-left, .topbar-right { gap: 12px; }
+
+        .brand-back {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: 1px solid var(--border-light);
+            background: var(--bg-surface);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: .18s ease;
+        }
+
+        .brand-back:hover { background: #f9fafb; border-color: #d0d5dd; }
+
+        .viewer-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .viewer-meta {
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-tertiary);
+            flex-wrap: wrap;
+        }
+
+        .meta-pill {
+            display: inline-flex;
+            align-items: center;
+            height: 24px;
+            padding: 0 10px;
+            border-radius: 999px;
+            background: var(--bg-muted);
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .btn-primary, .btn-secondary, .btn-chip {
+            height: 40px;
+            padding: 0 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: .18s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            border: none;
+            background: var(--brand);
+            color: #fff;
+        }
+
+        .btn-primary:hover { background: var(--brand-hover); }
+
+        .btn-secondary, .btn-chip {
+            border: 1px solid var(--border-light);
+            background: var(--bg-surface);
+            color: var(--text-secondary);
+        }
+
+        .btn-secondary:hover, .btn-chip:hover { background: #f9fafb; }
+
+        .btn-chip.active {
+            background: var(--brand-soft);
+            color: var(--brand);
+            border-color: #bfdbfe;
+        }
+
+        .workspace {
+            display: grid;
+            grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--rightbar-width);
+            min-height: calc(100vh - 64px);
+            align-items: start;
+            transition: grid-template-columns .22s ease;
+        }
+
+        .workspace.left-collapsed {
+            grid-template-columns: 0 minmax(0, 1fr) var(--rightbar-width);
+        }
+
+        .workspace.right-collapsed {
+            grid-template-columns: var(--sidebar-width) minmax(0, 1fr) 0;
+        }
+
+        .workspace.left-collapsed.right-collapsed {
+            grid-template-columns: 0 minmax(0, 1fr) 0;
+        }
+
+        .sidebar, .rightbar {
+            background: var(--bg-surface);
+            min-height: calc(100vh - 64px);
+            overflow: hidden;
+            transition: opacity .18s ease, border-color .18s ease, padding .18s ease;
+        }
+
+        .sidebar {
+            border-right: 1px solid var(--border-light);
+            padding: 22px 16px;
+        }
+
+        .rightbar {
+            border-left: 1px solid var(--border-light);
+            padding: 22px 20px;
+        }
+
+        .workspace.left-collapsed .sidebar,
+        .workspace.right-collapsed .rightbar {
+            opacity: 0;
+            pointer-events: none;
+            border-color: transparent;
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        .sidebar-group + .sidebar-group,
+        .rightbar-section + .rightbar-section {
+            margin-top: 24px;
+        }
+
+        .sidebar-label, .rightbar-title {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            padding: 0 10px;
+            margin-bottom: 10px;
+        }
+
+        .page-list {
+            display: grid;
+            gap: 8px;
+        }
+
+        .page-item {
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            padding: 12px;
+            background: var(--bg-surface);
+            cursor: pointer;
+            transition: .18s ease;
+        }
+
+        .page-item:hover { background: #f9fbff; border-color: #dbe4ff; }
+        .page-item.active {
+            background: var(--brand-soft);
+            border-color: #bfdbfe;
+        }
+
+        .page-name {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .page-row-meta {
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        /* === Tree navigation: 团队 → 项目 → 原型 === */
+        .nav-tree {
+            list-style: none;
+            display: grid;
+            gap: 2px;
+        }
+
+        .nav-tree-group {
+            list-style: none;
+            display: grid;
+            gap: 2px;
+        }
+
+        .nav-parent {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 10px;
+            border-radius: 10px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+            transition: .18s ease;
+        }
+        .nav-parent:hover { background: var(--bg-muted); }
+
+        .nav-parent .caret {
+            width: 14px;
+            height: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-tertiary);
+            font-size: 11px;
+            transition: transform .18s ease;
+            flex-shrink: 0;
+        }
+        .nav-tree-group.collapsed .caret { transform: rotate(-90deg); }
+        .nav-tree-group.collapsed > .nav-children { display: none; }
+
+        .nav-children {
+            list-style: none;
+            display: grid;
+            gap: 2px;
+            margin: 2px 0 6px 14px;
+            padding-left: 10px;
+            border-left: 1px dashed var(--border-light);
+        }
+
+        .nav-child {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 10px;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 13px;
+            cursor: pointer;
+            transition: .18s ease;
+        }
+        .nav-child:hover { background: var(--bg-muted); color: var(--text-primary); }
+        .nav-child.active {
+            background: var(--brand-soft);
+            color: var(--brand);
+            font-weight: 600;
+        }
+
+        .nav-level-icon {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+            color: var(--text-tertiary);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .nav-child.active .nav-level-icon { color: var(--brand); }
+        .nav-parent .nav-level-icon { color: var(--text-tertiary); }
+
+        .team-color {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            flex-shrink: 0;
+        }
+
+        .nav-meta {
+            margin-left: auto;
+            font-size: 11px;
+            color: var(--text-tertiary);
+            font-weight: 400;
+        }
+        .nav-child.active .nav-meta { color: var(--brand); opacity: .85; }
+
+        .sidebar-note {
+            border: 1px solid var(--border-soft);
+            border-radius: 12px;
+            background: var(--bg-soft);
+            padding: 14px;
+        }
+
+        .sidebar-note strong {
+            display: block;
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+
+        .sidebar-note p {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.75;
+        }
+
+        .viewer-main {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            min-height: calc(100vh - 64px);
+        }
+
+        .viewer-toolbar {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            background: rgba(255,255,255,.78);
+            backdrop-filter: blur(8px);
+        }
+
+        .viewer-toolbar-main {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-left, .toolbar-right, .device-switch { gap: 10px; flex-wrap: wrap; }
+
+        .panel-toggle {
+            width: 40px;
+            padding: 0;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .zoom-control {
+            height: 40px;
+            border: 1px solid var(--border-light);
+            background: var(--bg-surface);
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .zoom-btn {
+            width: 38px;
+            height: 38px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .zoom-btn:hover { background: #f9fafb; }
+
+        .zoom-value {
+            min-width: 64px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            border-left: 1px solid var(--border-light);
+            border-right: 1px solid var(--border-light);
+            height: 38px;
+            line-height: 38px;
+        }
+
+        .viewer-canvas-wrap {
+            flex: 1;
+            overflow: visible;
+            padding: 28px;
+            background: linear-gradient(180deg, #f8fafc 0%, #f3f6fb 100%);
+            position: relative;
+        }
+
+        .inspect-banner {
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            width: fit-content;
+            margin: 0 auto 18px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: var(--brand-soft);
+            color: var(--brand);
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid #bfdbfe;
+        }
+
+        .inspect-banner kbd {
+            background: #fff;
+            border: 1px solid #dbeafe;
+            border-radius: 6px;
+            padding: 1px 5px;
+            font-size: 10px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            color: var(--brand);
+        }
+
+        .frame-shell {
+            width: 100%;
+            max-width: 1320px;
+            margin: 0 auto;
+            background: #f1f5f9;
+            border: 1px solid var(--border-light);
+            border-radius: 20px;
+            padding: 18px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .frame-toolbar {
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 14px;
+            border-radius: 12px 12px 0 0;
+            background: #fff;
+            border: 1px solid var(--border-light);
+            border-bottom: none;
+        }
+
+        .frame-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .frame-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            background: #d0d5dd;
+        }
+
+        .frame-url {
+            flex: 1;
+            margin: 0 14px;
+            height: 28px;
+            border-radius: 999px;
+            background: var(--bg-muted);
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            color: var(--text-tertiary);
+            font-size: 12px;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .frame-body {
+            position: relative;
+            background: #fff;
+            border: 1px solid var(--border-light);
+            border-radius: 0 0 14px 14px;
+            overflow: hidden;
+            min-height: 760px;
+        }
+
+        .mock-prototype {
+            position: relative;
+            min-height: 760px;
+            display: grid;
+            grid-template-rows: 72px 1fr;
+            background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+            color: var(--text-primary);
+        }
+
+        .mock-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+            border-bottom: 1px solid var(--border-light);
+            background: #fff;
+        }
+
+        .mock-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .mock-header-tags {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .mock-pill {
+            display: inline-flex;
+            align-items: center;
+            height: 28px;
+            padding: 0 12px;
+            border-radius: 999px;
+            background: var(--brand-soft);
+            color: var(--brand);
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .mock-layout {
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            min-height: 688px;
+        }
+
+        .mock-sidebar {
+            padding: 20px;
+            background: #fbfcfe;
+            border-right: 1px solid var(--border-light);
+        }
+
+        .mock-nav-card {
+            border: 1px solid var(--border-soft);
+            border-radius: 14px;
+            background: #fff;
+            padding: 14px;
+            margin-bottom: 12px;
+        }
+
+        .mock-nav-card strong {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .mock-nav-card p {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.75;
+        }
+
+        .mock-content {
+            position: relative;
+            padding: 24px;
+            background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+        }
+
+        .mock-hero {
+            border: 1px solid var(--border-light);
+            border-radius: 18px;
+            background: #fff;
+            padding: 24px;
+            margin-bottom: 18px;
+        }
+
+        .mock-hero h2 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            line-height: 1.25;
+        }
+
+        .mock-hero p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.85;
+            max-width: 620px;
+            margin-bottom: 18px;
+        }
+
+        .mock-hero-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .mock-btn-primary, .mock-btn-secondary {
+            height: 38px;
+            padding: 0 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            border: 1px solid transparent;
+        }
+
+        .mock-btn-primary {
+            background: var(--brand);
+            color: #fff;
+        }
+
+        .mock-btn-secondary {
+            background: #fff;
+            color: var(--text-secondary);
+            border-color: var(--border-light);
+        }
+
+        .mock-card-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+        }
+
+        .mock-card {
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            background: #fff;
+            padding: 18px;
+            min-height: 156px;
+        }
+
+        .mock-card strong {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .mock-card p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.75;
+        }
+
+        .comment-marker {
+            position: absolute;
+            width: 26px;
+            height: 26px;
+            border-radius: 999px;
+            background: var(--brand);
+            color: #fff;
+            border: 2px solid #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            box-shadow: 0 8px 18px rgba(37, 99, 235, 0.28);
+            cursor: pointer;
+            z-index: 4;
+        }
+
+        .comment-marker:hover { transform: scale(1.08); }
+
+        .inspect-overlay {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .inspect-highlight {
+            position: absolute;
+            border: 1.5px solid var(--brand);
+            background: rgba(37, 99, 235, 0.08);
+            border-radius: 6px;
+        }
+
+        .inspect-label {
+            position: absolute;
+            top: -28px;
+            left: 0;
+            padding: 4px 8px;
+            border-radius: 8px;
+            background: var(--brand);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .measure-line-h, .measure-line-v {
+            position: absolute;
+            background: #fb7185;
+            opacity: .9;
+        }
+
+        .measure-line-h { height: 1px; }
+        .measure-line-v { width: 1px; }
+
+        .measure-tag {
+            position: absolute;
+            padding: 2px 6px;
+            border-radius: 6px;
+            background: #fb7185;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            white-space: nowrap;
+        }
+
+        .rightbar-section h3 {
+            font-size: 16px;
+            margin-bottom: 14px;
+        }
+
+        .panel-card {
+            border: 1px solid var(--border-soft);
+            border-radius: 14px;
+            background: #fbfcfe;
+            padding: 16px;
+        }
+
+        .panel-card + .panel-card {
+            margin-top: 12px;
+        }
+
+        .panel-card strong {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .panel-card p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.75;
+        }
+
+        .inspector-row {
+            justify-content: space-between;
+            gap: 12px;
+            padding: 8px 0;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border-soft);
+        }
+
+        .inspector-row:last-child { border-bottom: none; }
+        .inspector-row span { color: var(--text-tertiary); }
+        .inspector-row strong {
+            font-size: 12px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            color: var(--text-primary);
+        }
+
+        .inspector-spec-grid {
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .spec-chip {
+            display: inline-flex;
+            align-items: center;
+            height: 28px;
+            padding: 0 10px;
+            border-radius: 999px;
+            background: #fff;
+            border: 1px solid var(--border-light);
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .comment-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .comment-item {
+            border: 1px solid var(--border-soft);
+            border-radius: 14px;
+            background: #fbfcfe;
+            padding: 14px;
+        }
+
+        .comment-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 999px;
+            background: #dbeafe;
+            color: var(--brand);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+
+        .comment-author {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .comment-time {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .comment-content {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.8;
+            margin: 12px 0;
+        }
+
+        .comment-actions {
+            gap: 12px;
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .comment-action {
+            cursor: pointer;
+        }
+
+        .comment-action:hover { color: var(--brand); }
+
+        .reply-list {
+            margin-top: 12px;
+            padding-left: 14px;
+            border-left: 2px solid #dbeafe;
+        }
+
+        .reply-item + .reply-item { margin-top: 10px; }
+
+        .reply-header {
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .reply-author {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .reply-text {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        .comment-composer {
+            margin-top: 16px;
+        }
+
+        .comment-composer textarea {
+            width: 100%;
+            min-height: 92px;
+            resize: vertical;
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            padding: 12px 14px;
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            outline: none;
+        }
+
+        .comment-composer textarea:focus {
+            border-color: #93c5fd;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+        }
+
+        .comment-composer .btn-primary {
+            margin-top: 12px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        @media (max-width: 1280px) {
+            .workspace { grid-template-columns: 220px minmax(0, 1fr) 320px; }
+            .mock-card-grid { grid-template-columns: 1fr 1fr; }
+        }
+
+        @media (max-width: 1100px) {
+            .workspace { grid-template-columns: 220px minmax(0, 1fr); }
+            .rightbar { display: none; }
+        }
+
+        @media (max-width: 860px) {
+            body { overflow: auto; }
+            .workspace { grid-template-columns: 1fr; }
+            .sidebar { display: none; }
+            .topbar { padding: 0 16px; }
+            .topbar-right .btn-chip { display: none; }
+            .viewer-toolbar { padding: 14px 16px; }
+            .viewer-canvas-wrap { padding: 16px; }
+            .mock-layout { grid-template-columns: 1fr; }
+            .mock-sidebar { display: none; }
+            .mock-card-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <header class="topbar">
+            <div class="topbar-left">
+                <button class="brand-back" onclick="window.location.href='project-detail.html'">←</button>
+                <div>
+                    <div class="viewer-title">首页改版方案 V2.0</div>
+                    <div class="viewer-meta">
+                        <span class="meta-pill">12 个页面</span>
+                        <span class="meta-pill">研发评审中</span>
+                        <span>最近更新 今天 15:30</span>
+                    </div>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <button class="btn-chip active" id="inspectBtn" onclick="toggleInspectMode()">实时标注</button>
+                <button class="btn-chip" id="commentBtn" onclick="toggleCommentMode()">评论模式</button>
+                <button class="btn-secondary">导出标注</button>
+                <button class="btn-primary" onclick="alert('分享此原型')">分享</button>
+            </div>
+        </header>
+
+        <div class="workspace" id="workspace">
+            <aside class="sidebar" id="leftSidebar">
+                <div class="sidebar-group">
+                    <div class="sidebar-label">工作台</div>
+                    <ul class="nav-tree" id="navTree">
+
+                        <li class="nav-tree-group" data-group="my-teams">
+                            <div class="nav-parent" onclick="toggleNavGroup(this)">
+                                <span class="caret">▾</span>
+                                <span class="nav-level-icon">👥</span>
+                                <span>我的团队</span>
+                            </div>
+                            <ul class="nav-children">
+
+                                <li class="nav-tree-group" data-group="team-product">
+                                    <div class="nav-parent" onclick="toggleNavGroup(this)">
+                                        <span class="caret">▾</span>
+                                        <span class="team-color" style="background:#6366f1"></span>
+                                        <span>产品设计团队</span>
+                                    </div>
+                                    <ul class="nav-children">
+                                        <li class="nav-child active" id="nav-proj-ecom" onclick="window.location.href='project-detail.html'">
+                                            <span class="nav-level-icon">📁</span>
+                                            <span>电商平台改版</span>
+                                        </li>
+                                        <li class="nav-child" id="nav-proj-crm" onclick="window.location.href='project-detail.html?p=crm'">
+                                            <span class="nav-level-icon">📁</span>
+                                            <span>CRM 系统升级</span>
+                                        </li>
+                                        <li class="nav-child" id="nav-proj-viz" onclick="window.location.href='project-detail.html?p=viz'">
+                                            <span class="nav-level-icon">📁</span>
+                                            <span>可视化大屏项目</span>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                                <li class="nav-tree-group collapsed" data-group="team-tech">
+                                    <div class="nav-parent" onclick="toggleNavGroup(this)">
+                                        <span class="caret">▾</span>
+                                        <span class="team-color" style="background:#10b981"></span>
+                                        <span>技术研发团队</span>
+                                    </div>
+                                    <ul class="nav-children">
+                                        <li class="nav-child" onclick="window.location.href='project-detail.html?team=tech'">
+                                            <span class="nav-level-icon">📁</span>
+                                            <span>项目列表</span>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                            </ul>
+                        </li>
+
+                    </ul>
+                </div>
+
+                <div class="sidebar-group">
+                    <div class="sidebar-label">原型内页面</div>
+                    <div class="page-list">
+                        <div class="page-item active" data-page="index">
+                            <div class="page-name">首页</div>
+                            <div class="page-row-meta">
+                                <span>index.html</span>
+                                <span>当前</span>
+                            </div>
+                        </div>
+                        <div class="page-item" data-page="product-list" onclick="switchPrototypePage('product-list')">
+                            <div class="page-name">商品列表</div>
+                            <div class="page-row-meta">
+                                <span>product-list.html</span>
+                                <span>评论 2</span>
+                            </div>
+                        </div>
+                        <div class="page-item" data-page="product-detail" onclick="switchPrototypePage('product-detail')">
+                            <div class="page-name">商品详情</div>
+                            <div class="page-row-meta">
+                                <span>product-detail.html</span>
+                                <span>评论 5</span>
+                            </div>
+                        </div>
+                        <div class="page-item" data-page="cart" onclick="switchPrototypePage('cart')">
+                            <div class="page-name">购物车</div>
+                            <div class="page-row-meta">
+                                <span>cart.html</span>
+                                <span>评论 1</span>
+                            </div>
+                        </div>
+                        <div class="page-item" data-page="checkout" onclick="switchPrototypePage('checkout')">
+                            <div class="page-name">结算页</div>
+                            <div class="page-row-meta">
+                                <span>checkout.html</span>
+                                <span>评论 4</span>
+                            </div>
+                        </div>
+                        <div class="page-item" data-page="orders" onclick="switchPrototypePage('orders')">
+                            <div class="page-name">我的订单</div>
+                            <div class="page-row-meta">
+                                <span>orders.html</span>
+                                <span>评论 0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar-group">
+                    <div class="sidebar-label">本轮评审</div>
+                    <div class="sidebar-note">
+                        <strong>本轮评审重点</strong>
+                        <p>确认首页首屏活动区、频道入口和推荐流的层级关系，同时校对按钮位置与标注规格。</p>
+                    </div>
+                </div>
+            </aside>
+
+            <main class="viewer-main">
+                <div class="viewer-toolbar">
+                    <div class="viewer-toolbar-main">
+                        <button class="btn-secondary panel-toggle" id="leftPanelToggle" onclick="toggleLeftSidebar()" title="收起左侧栏">◧</button>
+                        <div class="toolbar-left">
+                        <div class="zoom-control">
+                            <button class="zoom-btn" onclick="zoomOut()">−</button>
+                            <div class="zoom-value" id="zoomLevel">100%</div>
+                            <button class="zoom-btn" onclick="zoomIn()">+</button>
+                        </div>
+                        <div class="device-switch">
+                            <button class="btn-chip active">桌面</button>
+                            <button class="btn-chip">平板</button>
+                            <button class="btn-chip">移动</button>
+                        </div>
+                    </div>
+                    </div>
+                    <div class="toolbar-right">
+                        <button class="btn-chip">评论 18</button>
+                        <button class="btn-chip">规格面板已开启</button>
+                        <button class="btn-secondary panel-toggle" id="rightPanelToggle" onclick="toggleRightSidebar()" title="收起右侧栏">◨</button>
+                    </div>
+                </div>
+
+                <div class="viewer-canvas-wrap">
+                    <div class="inspect-banner" id="inspectBanner">
+                        <span>实时标注已开启</span>
+                        <span>|</span>
+                        <span><kbd>Tab</kbd> 跳转元素 · <kbd>Esc</kbd> 退出</span>
+                    </div>
+
+                    <div class="frame-shell" id="frameShell">
+                        <div class="frame-toolbar">
+                            <div class="frame-dots">
+                                <span class="frame-dot"></span>
+                                <span class="frame-dot"></span>
+                                <span class="frame-dot"></span>
+                            </div>
+                            <div class="frame-url">https://hyperdesign.local/prototype/index.html</div>
+                            <div class="meta-pill">HTML Prototype</div>
+                        </div>
+
+                        <div class="frame-body">
+                            <div class="mock-prototype" id="mockPrototype">
+                                <div class="mock-header">
+                                    <div class="mock-brand">🛍️ 电商商城 V2.0</div>
+                                    <div class="mock-header-tags">
+                                        <span class="mock-pill">限时活动中</span>
+                                        <span class="mock-pill">新视觉方案</span>
+                                    </div>
+                                </div>
+
+                                <div class="mock-layout">
+                                    <div class="mock-sidebar">
+                                        <div class="mock-nav-card">
+                                            <strong>首页导航</strong>
+                                            <p>分类入口 / 搜索 / 活动区 / 推荐位</p>
+                                        </div>
+                                        <div class="mock-nav-card">
+                                            <strong>快捷能力</strong>
+                                            <p>满减活动 / 秒杀专区 / 会员权益</p>
+                                        </div>
+                                        <div class="mock-nav-card">
+                                            <strong>业务焦点</strong>
+                                            <p>提升首页点击率与转化链路效率</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="mock-content">
+                                        <div class="mock-hero" id="inspectTargetHero">
+                                            <h2>夏季新品专场</h2>
+                                            <p>通过更清晰的首屏活动区、强化 CTA 和优化商品卡片信息结构，提升首页点击率与加购转化。</p>
+                                            <div class="mock-hero-actions">
+                                                <span class="mock-btn-primary">立即查看</span>
+                                                <span class="mock-btn-secondary">查看规则</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="mock-card-grid">
+                                            <div class="mock-card" id="inspectTargetCardA">
+                                                <strong>活动主卡</strong>
+                                                <p>展示主视觉、利益点、操作按钮和标签信息，强化首屏转化意图。</p>
+                                            </div>
+                                            <div class="mock-card" id="inspectTargetCardB">
+                                                <strong>爆品推荐</strong>
+                                                <p>商品卡片强化折扣、价格和购买意愿提示，降低用户决策成本。</p>
+                                            </div>
+                                            <div class="mock-card">
+                                                <strong>频道入口</strong>
+                                                <p>支持图标导航与多频道跳转，减少首屏流失并提高分发效率。</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="comment-marker" style="top: 112px; left: 560px;" title="评论锚点">1</div>
+                                        <div class="comment-marker" style="top: 380px; left: 760px;" title="评论锚点">2</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="inspect-overlay" id="inspectOverlay">
+                                <div class="inspect-highlight" id="inspectHighlight" style="top: 98px; left: 244px; width: 710px; height: 168px;">
+                                    <div class="inspect-label">Hero / 710 × 168</div>
+                                </div>
+                                <div class="measure-line-h" style="top: 132px; left: 24px; width: 220px;"></div>
+                                <div class="measure-tag" style="top: 116px; left: 112px;">220 px</div>
+                                <div class="measure-line-v" style="top: 72px; left: 300px; height: 26px;"></div>
+                                <div class="measure-tag" style="top: 78px; left: 308px;">26 px</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <aside class="rightbar" id="rightSidebar">
+                <div class="rightbar-section">
+                    <div class="rightbar-title">检查器</div>
+                    <h3>当前选中：Hero 模块</h3>
+                    <div class="panel-card">
+                        <strong>基础规格</strong>
+                        <div class="inspector-row"><span>尺寸</span><strong>710 × 168</strong></div>
+                        <div class="inspector-row"><span>距离顶部</span><strong>26 px</strong></div>
+                        <div class="inspector-row"><span>距离左侧</span><strong>220 px</strong></div>
+                        <div class="inspector-row"><span>圆角</span><strong>18 px</strong></div>
+                    </div>
+                    <div class="panel-card">
+                        <strong>样式规格</strong>
+                        <div class="inspector-row"><span>字体</span><strong>Inter / 28 / 700</strong></div>
+                        <div class="inspector-row"><span>文本颜色</span><strong>#111827</strong></div>
+                        <div class="inspector-row"><span>背景</span><strong>#FFFFFF</strong></div>
+                        <div class="inspector-row"><span>边框</span><strong>1px #EAECF0</strong></div>
+                        <div class="inspector-spec-grid">
+                            <span class="spec-chip">Padding 24</span>
+                            <span class="spec-chip">Gap 18</span>
+                            <span class="spec-chip">Button 38h</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rightbar-section">
+                    <div class="rightbar-title">评论面板</div>
+                    <h3>评论记录</h3>
+                    <div class="comment-list">
+                        <div class="comment-item">
+                            <div class="comment-header">
+                                <div class="comment-avatar">张</div>
+                                <div>
+                                    <div class="comment-author">张三</div>
+                                    <div class="comment-time">2 小时前 · 锚点 #1</div>
+                                </div>
+                            </div>
+                            <div class="comment-content">首屏 CTA 已经更突出，但主文案与活动标签的层级还可以再拉开一点，建议强化利益点的第一眼可读性。</div>
+                            <div class="comment-actions">
+                                <span class="comment-action">👍 3</span>
+                                <span class="comment-action">回复</span>
+                                <span class="comment-action">标记待处理</span>
+                            </div>
+                            <div class="reply-list">
+                                <div class="reply-item">
+                                    <div class="reply-header">
+                                        <span class="reply-author">Admin</span>
+                                        <span class="comment-time">刚刚</span>
+                                    </div>
+                                    <div class="reply-text">收到，下一版会把利益点做成更高对比度标签，并强化按钮附近的辅助提示。</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="comment-item">
+                            <div class="comment-header">
+                                <div class="comment-avatar">李</div>
+                                <div>
+                                    <div class="comment-author">李四</div>
+                                    <div class="comment-time">昨天 · 锚点 #2</div>
+                                </div>
+                            </div>
+                            <div class="comment-content">第二排卡片的标题和正文间距比较舒服，这里建议把第三张卡片也统一到同样的节奏。</div>
+                            <div class="comment-actions">
+                                <span class="comment-action">👍 1</span>
+                                <span class="comment-action">回复</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="comment-composer">
+                        <textarea placeholder="输入评论内容，沉淀评审反馈..."></textarea>
+                        <button class="btn-primary" onclick="alert('评论已提交（原型演示）')">发送评论</button>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <script>
+        let currentZoom = 100;
+        let inspectEnabled = true;
+        let commentMode = false;
+        let leftSidebarCollapsed = false;
+        let rightSidebarCollapsed = false;
+
+        const zoomLevel = document.getElementById('zoomLevel');
+        const frameShell = document.getElementById('frameShell');
+        const inspectOverlay = document.getElementById('inspectOverlay');
+        const inspectBtn = document.getElementById('inspectBtn');
+        const commentBtn = document.getElementById('commentBtn');
+        const inspectBanner = document.getElementById('inspectBanner');
+        const workspace = document.getElementById('workspace');
+        const leftPanelToggle = document.getElementById('leftPanelToggle');
+        const rightPanelToggle = document.getElementById('rightPanelToggle');
+
+        function applyZoom() {
+            frameShell.style.transform = `scale(${currentZoom / 100})`;
+            frameShell.style.transformOrigin = 'top center';
+            zoomLevel.textContent = `${currentZoom}%`;
+        }
+
+        function zoomIn() {
+            currentZoom = Math.min(150, currentZoom + 10);
+            applyZoom();
+        }
+
+        function zoomOut() {
+            currentZoom = Math.max(60, currentZoom - 10);
+            applyZoom();
+        }
+
+        function toggleInspectMode() {
+            inspectEnabled = !inspectEnabled;
+            inspectOverlay.style.display = inspectEnabled ? 'block' : 'none';
+            inspectBanner.style.display = inspectEnabled ? 'inline-flex' : 'none';
+            inspectBtn.classList.toggle('active', inspectEnabled);
+            if (inspectEnabled) {
+                commentMode = false;
+                commentBtn.classList.remove('active');
+            }
+        }
+
+        function toggleCommentMode() {
+            commentMode = !commentMode;
+            commentBtn.classList.toggle('active', commentMode);
+            if (commentMode) {
+                inspectEnabled = false;
+                inspectOverlay.style.display = 'none';
+                inspectBanner.style.display = 'none';
+                inspectBtn.classList.remove('active');
+            }
+        }
+
+        function syncSidebarState() {
+            workspace.classList.toggle('left-collapsed', leftSidebarCollapsed);
+            workspace.classList.toggle('right-collapsed', rightSidebarCollapsed);
+            leftPanelToggle.textContent = leftSidebarCollapsed ? '◨' : '◧';
+            rightPanelToggle.textContent = rightSidebarCollapsed ? '◧' : '◨';
+            leftPanelToggle.title = leftSidebarCollapsed ? '展开左侧栏' : '收起左侧栏';
+            rightPanelToggle.title = rightSidebarCollapsed ? '展开右侧栏' : '收起右侧栏';
+        }
+
+        function toggleLeftSidebar() {
+            leftSidebarCollapsed = !leftSidebarCollapsed;
+            syncSidebarState();
+        }
+
+        function toggleRightSidebar() {
+            rightSidebarCollapsed = !rightSidebarCollapsed;
+            syncSidebarState();
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                inspectEnabled = false;
+                inspectOverlay.style.display = 'none';
+                inspectBanner.style.display = 'none';
+                inspectBtn.classList.remove('active');
+            }
+        });
+
+        applyZoom();
+        inspectBanner.style.display = 'inline-flex';
+        syncSidebarState();
+
+        // === 树状侧边栏 ===
+        function toggleNavGroup(el) {
+            const group = el.parentElement;
+            if (!group || !group.classList.contains('nav-tree-group')) return;
+            group.classList.toggle('collapsed');
+            try {
+                const state = JSON.parse(localStorage.getItem('hyperdesign.navState') || '{}');
+                state[group.getAttribute('data-group')] = group.classList.contains('collapsed');
+                localStorage.setItem('hyperdesign.navState', JSON.stringify(state));
+            } catch (e) {}
+        }
+
+        function restoreNavState() {
+            try {
+                const state = JSON.parse(localStorage.getItem('hyperdesign.navState') || '{}');
+                Object.keys(state).forEach(function(key) {
+                    if (state[key]) {
+                        const g = document.querySelector('.nav-tree-group[data-group="' + key + '"]');
+                        if (g) g.classList.add('collapsed');
+                    }
+                });
+            } catch (e) {}
+        }
+
+        // 原型页面切换
+        function switchPrototypePage(name) {
+            document.querySelectorAll('.page-item').forEach(function(el) {
+                el.classList.toggle('active', el.getAttribute('data-page') === name);
+            });
+            if (history.replaceState) history.replaceState(null, '', '#' + name);
+        }
+
+        // 按当前项目参数高亮侧边栏项目节点
+        function highlightCurrentProject() {
+            const params = new URLSearchParams(window.location.search);
+            const project = params.get('p') || 'ecom';
+            const map = {
+                'ecom': 'nav-proj-ecom',
+                'crm': 'nav-proj-crm',
+                'viz': 'nav-proj-viz'
+            };
+            document.querySelectorAll('#nav-proj-ecom, #nav-proj-crm, #nav-proj-viz').forEach(function(el) {
+                el.classList.remove('active');
+            });
+            const t = document.getElementById(map[project] || map.ecom);
+            if (t) t.classList.add('active');
+        }
+
+        restoreNavState();
+        highlightCurrentProject();
+    </script>
+</body>
+</html>

@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>原型预览 - HTML 原型分享平台</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #0f172a;
+            height: 100vh;
+            overflow: hidden;
+            color: #fff;
+        }
+        .toolbar {
+            background: rgba(15,23,42,.92);
+            backdrop-filter: blur(16px);
+            height: 62px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 18px;
+            border-bottom: 1px solid rgba(148,163,184,.18);
+        }
+        .toolbar-left,.toolbar-center,.toolbar-right,.tool-group,.device-switch,.comment-actions{display:flex}
+        .toolbar-left { align-items: center; gap: 18px; }
+        .back-btn {
+            width: 38px; height: 38px; border-radius: 12px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:.2s ease; background: rgba(255,255,255,.06);
+        }
+        .back-btn:hover { background: rgba(255,255,255,.14); }
+        .file-title { font-size: 16px; font-weight: 700; }
+        .file-subtitle { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+        .toolbar-center { gap: 10px; }
+        .tool-btn, .zoom-btn, .device-btn, .icon-chip {
+            border: 1px solid rgba(148,163,184,.16);
+            background: rgba(255,255,255,.06);
+            color: #fff;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: .2s ease;
+            font-weight: 700;
+        }
+        .tool-btn {
+            padding: 10px 14px; font-size: 13px; display:flex; align-items:center; gap:8px;
+        }
+        .tool-btn:hover,.tool-btn.active,.device-btn.active { background: linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-color: transparent; }
+        .toolbar-right { align-items: center; gap: 12px; }
+        .btn-primary {
+            padding: 10px 16px; background: linear-gradient(135deg,#667eea 0%,#764ba2 100%); border:none; border-radius:12px; color:#fff; font-size:14px; font-weight:700; cursor:pointer; box-shadow:0 12px 30px rgba(102,126,234,.24);
+        }
+        .btn-primary:hover { opacity: .94; }
+        .preview-container { display: grid; grid-template-columns: 280px 1fr 360px; height: calc(100vh - 62px); }
+        .sidebar-left,.sidebar-right {
+            background: rgba(15,23,42,.96); border-color: rgba(148,163,184,.14); overflow: auto;
+        }
+        .sidebar-left { border-right: 1px solid rgba(148,163,184,.14); }
+        .sidebar-right { border-left: 1px solid rgba(148,163,184,.14); display:flex; flex-direction:column; }
+        .sidebar-header, .comments-header {
+            padding: 16px 18px; border-bottom: 1px solid rgba(148,163,184,.12); font-weight: 700; font-size: 14px; color: #cbd5e1;
+        }
+        .page-list { padding: 10px; }
+        .page-item {
+            padding: 14px; border-radius: 14px; cursor: pointer; transition: .2s ease; margin-bottom: 8px; border:1px solid transparent;
+        }
+        .page-item:hover { background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.06); }
+        .page-item.active { background: linear-gradient(135deg, rgba(102,126,234,.24) 0%, rgba(118,75,162,.24) 100%); border-color: rgba(143,166,255,.28); }
+        .page-name { font-size: 14px; font-weight: 700; }
+        .page-index { font-size: 12px; color: #94a3b8; margin-top: 6px; }
+        .preview-area {
+            background: radial-gradient(circle at top, #1e293b 0%, #0f172a 60%);
+            display: flex; flex-direction: column; position: relative;
+        }
+        .preview-controls {
+            padding: 14px 18px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(148,163,184,.14); background: rgba(15,23,42,.36); backdrop-filter: blur(16px);
+        }
+        .tool-group { gap: 12px; align-items: center; }
+        .zoom-control { display:flex; align-items:center; gap:10px; color:#cbd5e1; font-size:13px; }
+        .zoom-btn { width:34px; height:34px; font-size:18px; display:flex; align-items:center; justify-content:center; }
+        .zoom-btn:hover,.device-btn:hover,.icon-chip:hover { background: rgba(255,255,255,.12); }
+        .device-switch { gap: 8px; }
+        .device-btn { padding: 9px 12px; font-size: 12px; }
+        .icon-chip { padding: 9px 12px; font-size: 12px; }
+        .preview-frame {
+            flex: 1; display:flex; align-items:center; justify-content:center; padding: 28px; overflow: auto;
+        }
+        .frame-wrapper {
+            width: 100%; max-width: 1320px; height: 820px; position: relative; border-radius: 24px; overflow: hidden; box-shadow: 0 30px 90px rgba(0,0,0,.38); border:1px solid rgba(255,255,255,.08);
+        }
+        .mock-prototype {
+            width:100%; height:100%; background:linear-gradient(180deg,#f8fafc 0,#ffffff 100%); color:#1f2937; display:grid; grid-template-rows:72px 1fr;
+        }
+        .mock-header { display:flex; align-items:center; justify-content:space-between; padding:0 28px; border-bottom:1px solid #e2e8f0; background:#fff; }
+        .mock-logo { display:flex; align-items:center; gap:10px; font-weight:800; color:#111827; }
+        .mock-pill { padding:8px 12px; background:#eef2ff; color:#5b66ea; border-radius:999px; font-size:12px; font-weight:700; }
+        .mock-body { display:grid; grid-template-columns:260px 1fr; }
+        .mock-nav { padding:22px; background:#f8fafc; border-right:1px solid #e2e8f0; }
+        .mock-nav .nav-card { padding:14px; border-radius:16px; background:#fff; border:1px solid #e5e7eb; margin-bottom:12px; }
+        .mock-content { padding:24px; background:linear-gradient(180deg,#ffffff 0,#f9fbff 100%); position:relative; }
+        .mock-hero { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-radius:24px; color:#fff; padding:28px; margin-bottom:20px; }
+        .mock-hero h2 { font-size:30px; margin-bottom:10px; }
+        .mock-hero p { opacity:.9; line-height:1.8; max-width:540px; }
+        .mock-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+        .mock-card { background:#fff; border:1px solid #e5e7eb; border-radius:18px; padding:18px; min-height:150px; }
+        .mock-card strong { display:block; margin-bottom:10px; }
+        .inspect-overlay { position:absolute; inset:0; pointer-events:none; display:none; }
+        .inspect-overlay.active { display:block; pointer-events:auto; cursor:crosshair; }
+        .inspect-highlight { position:absolute; border:2px solid #667eea; background:rgba(102,126,234,.12); border-radius:18px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.4); }
+        .inspect-tooltip {
+            position:absolute; top:18px; right:18px; width:260px; background:rgba(15,23,42,.94); color:#fff; border-radius:18px; padding:16px; box-shadow:0 24px 60px rgba(0,0,0,.3); border:1px solid rgba(148,163,184,.18);
+        }
+        .inspect-tooltip h4 { font-size:14px; margin-bottom:12px; }
+        .tooltip-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        .tooltip-item { padding:10px; background:rgba(255,255,255,.05); border-radius:12px; }
+        .tooltip-item span { display:block; font-size:11px; color:#94a3b8; margin-bottom:4px; }
+        .tooltip-item strong { font-size:13px; }
+        .measure-line { position:absolute; background:#ff5a7a; }
+        .measure-label { position:absolute; background:#ff5a7a; color:#fff; font-size:11px; padding:4px 8px; border-radius:999px; font-weight:700; }
+        .comments-list { flex:1; overflow:auto; padding:16px; }
+        .comment-item {
+            background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.05); border-radius: 18px; padding: 16px; margin-bottom: 12px;
+        }
+        .comment-header { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+        .comment-avatar { width:34px; height:34px; border-radius:50%; background: linear-gradient(135deg,#667eea 0%,#764ba2 100%); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; }
+        .comment-author { font-size:14px; font-weight:700; }
+        .comment-time { font-size:12px; color:#94a3b8; margin-top:4px; }
+        .comment-content { font-size:14px; line-height:1.8; color:#e2e8f0; margin-bottom:12px; }
+        .comment-actions { gap:12px; font-size:12px; color:#94a3b8; }
+        .comment-action { cursor:pointer; transition:color .2s; }
+        .comment-action:hover { color:#c7d2fe; }
+        .reply-list { margin-top:12px; padding-left:14px; border-left:2px solid rgba(143,166,255,.34); }
+        .reply-item { font-size:13px; margin-bottom:10px; color:#cbd5e1; }
+        .reply-author { font-weight:700; margin-bottom:4px; }
+        .comment-input-area { padding:16px; border-top:1px solid rgba(148,163,184,.12); }
+        .comment-input {
+            width:100%; padding:14px; background:rgba(255,255,255,.06); border:1px solid rgba(148,163,184,.16); border-radius:16px; color:#fff; font-size:14px; resize:vertical; min-height:88px; font-family:inherit;
+        }
+        .comment-input:focus { outline:none; border-color:#667eea; }
+        .comment-input::placeholder { color:#94a3b8; }
+        .comment-submit { width:100%; margin-top:12px; }
+        .comment-marker {
+            position:absolute; width:26px; height:26px; background:#667eea; border:2px solid #fff; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-size:12px; font-weight:700; cursor:pointer; box-shadow:0 8px 20px rgba(0,0,0,.25); z-index:5;
+        }
+        .comment-marker:hover { transform:scale(1.12); }
+        @media (max-width: 1220px) {
+            .preview-container { grid-template-columns: 240px 1fr 320px; }
+            .mock-cards { grid-template-columns:1fr 1fr; }
+        }
+        @media (max-width: 900px) {
+            .preview-container { grid-template-columns: 1fr; }
+            .sidebar-left,.sidebar-right { display:none; }
+            .toolbar-center { display:none; }
+            .preview-controls { flex-direction:column; gap:12px; align-items:flex-start; }
+            .mock-body { grid-template-columns:1fr; }
+            .mock-nav { display:none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <div class="toolbar-left">
+            <div class="back-btn" onclick="window.location.href='project-detail.html'">←</div>
+            <div>
+                <div class="file-title">首页改版方案 V2.0</div>
+                <div class="file-subtitle">12 个页面 · 研发评审中 · 最近更新 15:30</div>
+            </div>
+        </div>
+        <div class="toolbar-center">
+            <button class="tool-btn active" id="inspectBtn" onclick="toggleInspect()">🔍 标注模式</button>
+            <button class="tool-btn" id="commentBtn" onclick="toggleCommentMode()">💬 评论模式</button>
+            <button class="tool-btn">🧭 页面树</button>
+        </div>
+        <div class="toolbar-right">
+            <button class="btn-primary" onclick="alert('分享此原型')">🔗 分享</button>
+        </div>
+    </div>
+
+    <div class="preview-container">
+        <aside class="sidebar-left">
+            <div class="sidebar-header">页面列表 (12)</div>
+            <div class="page-list">
+                <div class="page-item active"><div class="page-name">首页</div><div class="page-index">index.html · 当前演示页</div></div>
+                <div class="page-item"><div class="page-name">商品列表</div><div class="page-index">product-list.html</div></div>
+                <div class="page-item"><div class="page-name">商品详情</div><div class="page-index">product-detail.html</div></div>
+                <div class="page-item"><div class="page-name">购物车</div><div class="page-index">cart.html</div></div>
+                <div class="page-item"><div class="page-name">结算页</div><div class="page-index">checkout.html</div></div>
+                <div class="page-item"><div class="page-name">我的订单</div><div class="page-index">orders.html</div></div>
+            </div>
+        </aside>
+
+        <main class="preview-area">
+            <div class="preview-controls">
+                <div class="tool-group">
+                    <div class="zoom-control">
+                        <button class="zoom-btn" onclick="zoomOut()">−</button>
+                        <span id="zoomLevel">100%</span>
+                        <button class="zoom-btn" onclick="zoomIn()">+</button>
+                    </div>
+                    <div class="device-switch">
+                        <button class="device-btn active">💻 桌面</button>
+                        <button class="device-btn">📱 移动</button>
+                        <button class="device-btn">📱 平板</button>
+                    </div>
+                </div>
+                <div class="tool-group">
+                    <button class="icon-chip">评论 18</button>
+                    <button class="icon-chip">标注已开启</button>
+                </div>
+            </div>
+
+            <div class="preview-frame">
+                <div class="frame-wrapper" id="frameWrapper">
+                    <div class="mock-prototype">
+                        <div class="mock-header">
+                            <div class="mock-logo">🛍️ 电商商城 V2.0</div>
+                            <div style="display:flex;gap:10px;align-items:center">
+                                <div class="mock-pill">限时活动中</div>
+                                <div class="mock-pill">新视觉方案</div>
+                            </div>
+                        </div>
+                        <div class="mock-body">
+                            <div class="mock-nav">
+                                <div class="nav-card"><strong>首页导航</strong><div style="font-size:13px;color:#64748b;line-height:1.8">分类入口 / 搜索 / 活动区 / 推荐位</div></div>
+                                <div class="nav-card"><strong>快捷能力</strong><div style="font-size:13px;color:#64748b;line-height:1.8">满减活动 / 秒杀专区 / 会员权益</div></div>
+                                <div class="nav-card"><strong>业务焦点</strong><div style="font-size:13px;color:#64748b;line-height:1.8">提升首页点击率与转化链路效率</div></div>
+                            </div>
+                            <div class="mock-content">
+                                <div class="mock-hero">
+                                    <h2>夏季新品专场</h2>
+                                    <p>通过更清晰的首屏活动区、强化 CTA 和优化商品卡片信息结构，提升首页点击率与加购转化。</p>
+                                </div>
+                                <div class="mock-cards">
+                                    <div class="mock-card"><strong>活动主卡</strong><div style="font-size:13px;color:#64748b;line-height:1.75">展示主视觉、利益点、操作按钮和标签信息。</div></div>
+                                    <div class="mock-card"><strong>爆品推荐</strong><div style="font-size:13px;color:#64748b;line-height:1.75">商品卡片强化折扣、价格和购买意愿提示。</div></div>
+                                    <div class="mock-card"><strong>频道入口</strong><div style="font-size:13px;color:#64748b;line-height:1.75">支持图标导航与多频道跳转，减少首屏流失。</div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="inspect-overlay active" id="inspectOverlay">
+                        <div class="inspect-highlight" style="top:128px;left:320px;width:640px;height:180px;"></div>
+                        <div class="inspect-tooltip">
+                            <h4>当前选中：活动主卡 Hero Banner</h4>
+                            <div class="tooltip-grid">
+                                <div class="tooltip-item"><span>尺寸</span><strong>640 × 180</strong></div>
+                                <div class="tooltip-item"><span>圆角</span><strong>24 px</strong></div>
+                                <div class="tooltip-item"><span>背景</span><strong>#667eea → #764ba2</strong></div>
+                                <div class="tooltip-item"><span>内边距</span><strong>28 px</strong></div>
+                                <div class="tooltip-item"><span>标题字号</span><strong>30 px / 700</strong></div>
+                                <div class="tooltip-item"><span>与左侧间距</span><strong>40 px</strong></div>
+                            </div>
+                        </div>
+                        <div class="measure-line" style="left:280px;top:214px;width:40px;height:2px;"></div>
+                        <div class="measure-label" style="left:286px;top:186px;">40 px</div>
+                    </div>
+
+                    <div class="comment-marker" style="top: 156px; left: 618px;" title="点击查看评论">1</div>
+                    <div class="comment-marker" style="top: 390px; left: 822px;" title="点击查看评论">2</div>
+                </div>
+            </div>
+        </main>
+
+        <aside class="sidebar-right">
+            <div class="comments-header">评论面板 (18)</div>
+            <div class="comments-list">
+                <div class="comment-item">
+                    <div class="comment-header">
+                        <div class="comment-avatar">张</div>
+                        <div>
+                            <div class="comment-author">张三</div>
+                            <div class="comment-time">2 小时前 · 锚点 #1</div>
+                        </div>
+                    </div>
+                    <div class="comment-content">这里的首屏 CTA 已经更突出，但主文案与活动标签的层级还可以再拉开一点，建议增强利益点的第一眼可读性。</div>
+                    <div class="comment-actions">
+                        <span class="comment-action">👍 3</span>
+                        <span class="comment-action">💬 回复</span>
+                        <span class="comment-action">🔖 标记待处理</span>
+                    </div>
+                    <div class="reply-list">
+                        <div class="reply-item"><div class="reply-author">Admin 回复：</div><div>收到，我准备把利益点做成更高对比度标签，并强化按钮附近的辅助提示。</div></div>
+                    </div>
+                </div>
+
+                <div class="comment-item">
+                    <div class="comment-header">
+                        <div class="comment-avatar">李</div>
+                        <div>
+                            <div class="comment-author">李四</div>
+                            <div class="comment-time">5 小时前 · 锚点 #2</div>
+                        </div>
+                    </div>
+                    <div class="comment-content">商品卡片区的信息结构已经更规整了，建议补充 hover 状态或“加入购物车”强化态，方便研发理解最终交互。</div>
+                    <div class="comment-actions">
+                        <span class="comment-action">👍 1</span>
+                        <span class="comment-action">💬 回复</span>
+                        <span class="comment-action">✅ 已确认</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="comment-input-area">
+                <textarea class="comment-input" placeholder="添加评论，支持作为评审意见沉淀到此页面..."></textarea>
+                <button class="btn-primary comment-submit" onclick="addComment()">发送评论</button>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        let inspectMode = true;
+        let commentMode = false;
+        let zoomLevel = 100;
+        function toggleInspect() {
+            inspectMode = !inspectMode;
+            const btn = document.getElementById('inspectBtn');
+            const overlay = document.getElementById('inspectOverlay');
+            if (inspectMode) {
+                btn.classList.add('active');
+                overlay.classList.add('active');
+                commentMode = false;
+                document.getElementById('commentBtn').classList.remove('active');
+            } else {
+                btn.classList.remove('active');
+                overlay.classList.remove('active');
+            }
+        }
+        function toggleCommentMode() {
+            commentMode = !commentMode;
+            const btn = document.getElementById('commentBtn');
+            if (commentMode) {
+                btn.classList.add('active');
+                inspectMode = false;
+                document.getElementById('inspectBtn').classList.remove('active');
+                document.getElementById('inspectOverlay').classList.remove('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        }
+        function zoomIn() {
+            if (zoomLevel < 200) {
+                zoomLevel += 10;
+                document.getElementById('zoomLevel').textContent = zoomLevel + '%';
+                document.getElementById('frameWrapper').style.transform = `scale(${zoomLevel / 100})`;
+                document.getElementById('frameWrapper').style.transformOrigin = 'center center';
+            }
+        }
+        function zoomOut() {
+            if (zoomLevel > 60) {
+                zoomLevel -= 10;
+                document.getElementById('zoomLevel').textContent = zoomLevel + '%';
+                document.getElementById('frameWrapper').style.transform = `scale(${zoomLevel / 100})`;
+                document.getElementById('frameWrapper').style.transformOrigin = 'center center';
+            }
+        }
+        function addComment() {
+            const input = document.querySelector('.comment-input');
+            if (input.value.trim()) {
+                alert('评论已添加：' + input.value);
+                input.value = '';
+            }
+        }
+    </script>
+</body>
+</html>

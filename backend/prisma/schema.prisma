@@ -1,0 +1,300 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum SystemRole {
+  SUPER_ADMIN
+  SUB_ADMIN
+  EMPLOYEE
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum TeamRole {
+  ADMIN
+  MEMBER
+}
+
+enum ProjectPermissionLevel {
+  VIEW
+  EDIT
+}
+
+enum PrototypeParseStatus {
+  PARSING
+  SUCCESS
+  FAILED
+}
+
+enum AnnotationStatus {
+  OPEN
+  RESOLVED
+}
+
+enum ShareLinkStatus {
+  ACTIVE
+  REVOKED
+}
+
+model User {
+  id                  String              @id @default(cuid())
+  username            String              @unique
+  passwordHash        String
+  role                SystemRole          @default(EMPLOYEE)
+  status              UserStatus          @default(ACTIVE)
+  lastLoginAt         DateTime?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  sessions            Session[]
+  uploads             PrototypeFile[]     @relation("PrototypeUploader")
+  teamMemberships     TeamMember[]
+  grantedPermissions  ProjectPermission[] @relation("PermissionGranter")
+  projectPermissions  ProjectPermission[] @relation("PermissionUser")
+  filePermissions     FilePermission[]    @relation("FilePermissionUser")
+  grantedFilePermissions FilePermission[] @relation("FilePermissionGranter")
+  annotations           Annotation[]     @relation("AnnotationAuthor")
+  comments              AnnotationComment[] @relation("CommentAuthor")
+  createdShareLinks     ShareLink[]        @relation("ShareCreator")
+  shareGrants           ShareGrant[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PrototypeFile {
+  id               String               @id @default(cuid())
+  projectId        String?
+  folderId         String?
+  name             String
+  originalFilename String
+  originalZipPath  String
+  extractedPath    String?
+  fileSize         Int
+  parseStatus      PrototypeParseStatus @default(PARSING)
+  parseError       String?
+  entryPageId      String?
+  pageCount        Int                  @default(0)
+  uploaderId       String
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  uploader         User                 @relation("PrototypeUploader", fields: [uploaderId], references: [id], onDelete: Restrict)
+  project          Project?             @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  folder           ProjectFolder?       @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  pages            PrototypePage[]
+  permissions      FilePermission[]
+  annotations      Annotation[]
+  shareLinks       ShareLink[]
+
+  @@index([projectId, folderId, updatedAt])
+}
+
+model FilePermission {
+  id          String        @id @default(cuid())
+  fileId      String
+  userId      String
+  canView     Boolean       @default(false)
+  canComment  Boolean       @default(false)
+  canEdit     Boolean       @default(false)
+  canDelete   Boolean       @default(false)
+  grantedById String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  file        PrototypeFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  user        User          @relation("FilePermissionUser", fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy   User?         @relation("FilePermissionGranter", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  @@unique([fileId, userId])
+  @@index([userId, canView])
+}
+
+model PrototypePage {
+  id           String   @id @default(cuid())
+  fileId       String
+  title        String?
+  relativePath String
+  directoryPath String?
+  isEntry      Boolean  @default(false)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  file         PrototypeFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  annotations  Annotation[]
+
+  @@unique([fileId, relativePath])
+  @@index([fileId, sortOrder])
+}
+
+model Annotation {
+  id          String           @id @default(cuid())
+  fileId      String
+  pageId      String
+  number      Int
+  title       String
+  topPercent       Float
+  leftPercent      Float
+  pageScrollTop    Float  @default(0)
+  pageScrollHeight Float  @default(0)
+  status           AnnotationStatus @default(OPEN)
+  createdById String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  file        PrototypeFile    @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  page        PrototypePage    @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  createdBy   User             @relation("AnnotationAuthor", fields: [createdById], references: [id], onDelete: Restrict)
+  comments    AnnotationComment[]
+
+  @@unique([fileId, number])
+  @@index([pageId, status, createdAt])
+}
+
+model AnnotationComment {
+  id           String      @id @default(cuid())
+  annotationId String
+  parentId     String?
+  content      String
+  createdById  String
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  annotation   Annotation  @relation(fields: [annotationId], references: [id], onDelete: Cascade)
+  parent       AnnotationComment? @relation("CommentReplyTree", fields: [parentId], references: [id], onDelete: Cascade)
+  replies      AnnotationComment[] @relation("CommentReplyTree")
+  createdBy    User        @relation("CommentAuthor", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([annotationId, createdAt])
+  @@index([parentId, createdAt])
+}
+
+model ShareLink {
+  id           String          @id @default(cuid())
+  fileId       String
+  tokenHash    String          @unique
+  status       ShareLinkStatus @default(ACTIVE)
+  expiresAt    DateTime
+  createdById  String
+  createdAt    DateTime        @default(now())
+  revokedAt    DateTime?
+  file         PrototypeFile   @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  createdBy    User            @relation("ShareCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  grants       ShareGrant[]
+
+  @@index([fileId, status, expiresAt])
+}
+
+model ShareGrant {
+  id          String    @id @default(cuid())
+  shareLinkId String
+  userId      String
+  acceptedAt  DateTime  @default(now())
+  shareLink   ShareLink @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([shareLinkId, userId])
+  @@index([userId])
+}
+
+model OperationLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  targetType String?
+  targetId   String?
+  detail     String?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([action, createdAt])
+}
+
+model Team {
+  id          String       @id @default(cuid())
+  name        String
+  description String
+  icon        String
+  color       String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  members     TeamMember[]
+  projects    Project[]
+}
+
+model TeamMember {
+  id         String   @id @default(cuid())
+  teamId      String
+  userId      String
+  role        TeamRole @default(MEMBER)
+  canUpload   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  team        Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([userId])
+}
+
+model Project {
+  id          String              @id @default(cuid())
+  teamId       String
+  name         String
+  description  String
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  team         Team                @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  permissions  ProjectPermission[]
+  files        PrototypeFile[]
+  folders      ProjectFolder[]
+
+  @@index([teamId, updatedAt])
+}
+
+model ProjectFolder {
+  id        String          @id @default(cuid())
+  projectId String
+  parentId  String?
+  name      String
+  sortOrder Int             @default(0)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  project   Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent    ProjectFolder?  @relation("FolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children  ProjectFolder[] @relation("FolderTree")
+  files     PrototypeFile[]
+
+  @@unique([projectId, parentId, name])
+  @@index([projectId, parentId, sortOrder])
+}
+
+model ProjectPermission {
+  id          String                 @id @default(cuid())
+  projectId    String
+  userId       String
+  level        ProjectPermissionLevel
+  grantedById  String?
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  project      Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user         User                   @relation("PermissionUser", fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy    User?                  @relation("PermissionGranter", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, userId])
+  @@index([userId, level])
+}
