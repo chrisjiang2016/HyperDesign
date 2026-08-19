@@ -1,4 +1,23 @@
 services:
+  mysql:
+    image: mysql:8.0
+    ports:
+      - "127.0.0.1:${MYSQL_HOST_PORT:-3306}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-changeme}
+      MYSQL_DATABASE: hyperdesign
+      MYSQL_USER: hyperdesign
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-changeme}
+    volumes:
+      - hyperdesign-mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "hyperdesign", "-p${MYSQL_PASSWORD:-changeme}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
   api:
     build:
       context: ../backend
@@ -7,13 +26,14 @@ services:
       PORT: 3001
       APP_ORIGIN: ${APP_ORIGIN:-http://localhost:8080}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
-      # SQLite file URLs are resolved relative to prisma/schema.prisma.
-      DATABASE_URL: file:../data/hyperdesign.db
-      STORAGE_LOCAL_ROOT: ./storage
+      DATABASE_URL: mysql://hyperdesign:${MYSQL_PASSWORD:-changeme}@mysql:3306/hyperdesign
+      STORAGE_LOCAL_ROOT: /app/storage
       MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-104857600}
     volumes:
-      - hyperdesign-data:/app/data
-      - hyperdesign-storage:/app/storage
+      - ${STORAGE_HOST_PATH:-./storage}:/app/storage
+    depends_on:
+      mysql:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/api/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 10s
@@ -25,13 +45,16 @@ services:
   web:
     build:
       context: ../frontend
+    environment:
+      API_PROXY_URL: http://api:3001
     ports:
       - "${WEB_PORT:-8080}:80"
+    volumes:
+      - ${STORAGE_HOST_PATH:-./storage}:/app/storage:ro
     depends_on:
       api:
         condition: service_healthy
     restart: unless-stopped
 
 volumes:
-  hyperdesign-data:
-  hyperdesign-storage:
+  hyperdesign-mysql:

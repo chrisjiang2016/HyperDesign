@@ -7,6 +7,7 @@ import { lookup as lookupMime } from 'mime-types'
 import { PrismaService } from '../prisma/prisma.service'
 import { AuthService } from '../auth/auth.service'
 import { WorkspaceService } from '../auth/current-user.service'
+import { StorageService } from '../storage/storage.service'
 import { ok } from '../common/api-response'
 import { ZipParserService } from './zip-parser.service'
 
@@ -20,6 +21,7 @@ export class PrototypeSpikeController {
     private readonly workspaceService: WorkspaceService,
     private readonly prisma: PrismaService,
     private readonly parser: ZipParserService,
+    private readonly storage: StorageService,
   ) {}
 
   @Post('projects/:projectId/files/upload')
@@ -43,16 +45,16 @@ export class PrototypeSpikeController {
     const user = await this.auth.getCurrentUser(request.cookies?.[SESSION_COOKIE])
     const file = await this.workspaceService.requireProjectFileEdit(user.id, projectId, fileId)
     if (file.parseStatus === 'PARSING') throw new BadRequestException({ errorCode: 'PARSING_IN_PROGRESS', message: '文件正在解析中，请稍后再试' })
-    if (!file.originalZipPath) throw new BadRequestException({ errorCode: 'SOURCE_MISSING', message: '未找到可用于重新解析的 ZIP 源文件' })
-    try { await fs.access(file.originalZipPath) } catch { throw new BadRequestException({ errorCode: 'SOURCE_MISSING', message: '原始 ZIP 文件已不存在，无法重新解析' }) }
+    if (!file.storageKey) throw new BadRequestException({ errorCode: 'SOURCE_MISSING', message: '未找到可用于重新解析的 ZIP 源文件' })
+    const originalZipPath = this.storage.getOriginalZipPath(file.storageKey)
+    try { await fs.access(originalZipPath) } catch { throw new BadRequestException({ errorCode: 'SOURCE_MISSING', message: '原始 ZIP 文件已不存在，无法重新解析' }) }
     await this.prisma.$transaction([
       this.prisma.prototypePage.deleteMany({ where: { fileId } }),
-      this.prisma.prototypeFile.update({ where: { id: fileId }, data: { parseStatus: 'PARSING', parseError: null, pageCount: 0, entryPageId: null, extractedPath: null } }),
+      this.prisma.prototypeFile.update({ where: { id: fileId }, data: { parseStatus: 'PARSING', parseError: null, pageCount: 0, entryPageId: null } }),
     ])
-    const storageRoot = resolve(process.env.STORAGE_LOCAL_ROOT ?? './storage')
-    const extractDirectory = join(storageRoot, 'extracted', fileId)
+    const extractDirectory = this.storage.getExtractedPath(file.storageKey)
     await fs.rm(extractDirectory, { recursive: true, force: true })
-    setImmediate(() => void this.parseZipRecord(fileId, file.originalZipPath, extractDirectory))
+    setImmediate(() => void this.parseZipRecord(fileId, originalZipPath, extractDirectory))
     return ok({ id: fileId, parseStatus: 'parsing' }, '已开始重新解析')
   }
 
@@ -62,14 +64,13 @@ export class PrototypeSpikeController {
       throw new BadRequestException({ errorCode: 'INVALID_FILE_TYPE', message: '仅支持有效的 ZIP 文件' })
     }
 
-    const storageRoot = resolve(process.env.STORAGE_LOCAL_ROOT ?? './storage')
     const record = await this.prisma.prototypeFile.create({
       data: {
         projectId,
         folderId,
         name: displayName?.trim() || this.decodeUploadFilename(file.originalname).replace(/\.zip$/i, ''),
         originalFilename: this.decodeUploadFilename(file.originalname),
-        originalZipPath: '',
+        storageKey: '',
         fileSize: file.size,
         uploaderId: userId,
         permissions: {
@@ -84,14 +85,15 @@ export class PrototypeSpikeController {
         },
       },
     })
-    const uploadDirectory = join(storageRoot, 'uploads', record.id)
-    const extractDirectory = join(storageRoot, 'extracted', record.id)
-    const zipPath = join(uploadDirectory, 'original.zip')
+    const storageKey = this.storage.generateStorageKey(record.id)
+    const uploadDirectory = this.storage.getUploadDirectory(record.id)
+    const extractDirectory = this.storage.getExtractDirectory(record.id)
+    const zipPath = this.storage.getOriginalZipPath(storageKey)
 
     try {
       await fs.mkdir(uploadDirectory, { recursive: true })
       await fs.writeFile(zipPath, file.buffer)
-      await this.prisma.prototypeFile.update({ where: { id: record.id }, data: { originalZipPath: zipPath } })
+      await this.prisma.prototypeFile.update({ where: { id: record.id }, data: { storageKey } })
       // Local development worker: parsing is deliberately detached from the request.
       // The production Storage/Job adapter can replace this with BullMQ without changing the API contract.
       setImmediate(() => void this.parseZipRecord(record.id, zipPath, extractDirectory))
@@ -113,7 +115,7 @@ export class PrototypeSpikeController {
       const entry = pageRecords.find((page) => page.relativePath === entryPage?.relativePath)
       const saved = await this.prisma.prototypeFile.update({
         where: { id: fileId },
-        data: { extractedPath: extractDirectory, parseStatus: 'SUCCESS', pageCount: pages.length, entryPageId: entry?.id },
+        data: { parseStatus: 'SUCCESS', pageCount: pages.length, entryPageId: entry?.id },
       })
       return saved
     } catch (error) {
@@ -149,10 +151,11 @@ export class PrototypeSpikeController {
   private async sendPreviewResource(request: Request, fileId: string, path: string, response: Response) {
     const user = await this.auth.getCurrentUser(request.cookies?.[SESSION_COOKIE])
     const file = await this.workspaceService.canAccessPrototypeFile(user.id, fileId)
-    if (!file?.extractedPath) throw new BadRequestException({ errorCode: 'NOT_FOUND', message: '预览资源不存在或无权访问' })
+    if (!file?.storageKey) throw new BadRequestException({ errorCode: 'NOT_FOUND', message: '预览资源不存在或无权访问' })
 
     const safePath = this.parser.assertSafeRelativePath(path)
-    const root = resolve(file.extractedPath)
+    const extractedPath = this.storage.getExtractedPath(file.storageKey)
+    const root = resolve(extractedPath)
     const filePath = resolve(root, safePath)
     if (filePath !== root && !filePath.startsWith(`${root}\\`) && !filePath.startsWith(`${root}/`)) {
       throw new BadRequestException({ errorCode: 'VALIDATION_ERROR', message: '资源路径不安全' })

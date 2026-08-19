@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert, Button, Checkbox, Form, Input, Modal, Table, Upload, message } from 'antd'
-import { EyeOutlined, FileZipOutlined, FolderAddOutlined, InboxOutlined, LockOutlined, SearchOutlined, ShareAltOutlined, UploadOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EyeOutlined, FileZipOutlined, FolderAddOutlined, InboxOutlined, LockOutlined, SearchOutlined, ShareAltOutlined, UploadOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import { useNavigate, useParams } from 'react-router-dom'
-import { createProjectFolder, getProjectDetail, getProjectDirectory, getProjectFilePermissions, getProjectFiles, retryProjectFileParse, updateProjectFilePermission, uploadProjectFile, type FilePermissionMember, type ProjectDetail, type ProjectFile, type ProjectFolder } from '@/api/workspace'
+import { createProjectFolder, deleteProject, deleteProjectFile, getProjectDetail, getProjectDirectory, getProjectFilePermissions, getProjectFiles, retryProjectFileParse, updateProjectFilePermission, uploadProjectFile, type FilePermissionMember, type ProjectDetail, type ProjectFile, type ProjectFolder } from '@/api/workspace'
 import { AppShellLayout } from '@/layouts/AppLayouts'
 import { RightPanel } from '@/components/workspace/RightPanel'
 import { PageEmpty, PageError, PageLoading } from '@/components/common/pagestates'
+import { useWorkspaceStore } from '@/store/workspaceStore'
 
 type UploadFormValues = { displayName?: string }
 type FolderFormValues = { name: string }
@@ -30,12 +31,15 @@ export function ProjectDetailPage() {
   const [folderOpen, setFolderOpen] = useState(false)
   const [creatingFolder, setCreatingFolder] = useState(false)
   const [retryingFileId, setRetryingFileId] = useState<string | null>(null)
+  const [deletingFileId, setDeletingFileId] = useState<string | null>(null)
   const [permissionFile, setPermissionFile] = useState<ProjectFile | null>(null)
   const [permissionMembers, setPermissionMembers] = useState<FilePermissionMember[]>([])
   const [permissionsLoading, setPermissionsLoading] = useState(false)
   const [savingPermissionUserId, setSavingPermissionUserId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const [form] = Form.useForm<UploadFormValues>()
   const [folderForm] = Form.useForm<FolderFormValues>()
+  const fetchNavTeams = useWorkspaceStore((state) => state.fetchNavTeams)
 
   const loadProject = useCallback(async (showLoading = true) => {
     if (!projectId) return
@@ -87,6 +91,50 @@ export function ProjectDetailPage() {
     finally { setRetryingFileId(null) }
   }
 
+  const handleDeleteProject = () => {
+    if (!project) return
+    Modal.confirm({
+      centered: true,
+      title: `删除项目“${project.name}”`,
+      content: '这将永久删除项目中的文件、目录、评论和分享链接，无法恢复。',
+      okText: '确认删除',
+      okButtonProps: { danger: true, loading: deleting },
+      cancelText: '取消',
+      onOk: async () => {
+        setDeleting(true)
+        try {
+          await deleteProject(project.id)
+          await fetchNavTeams()
+          message.success('项目已删除')
+          navigate(`/teams/${project.teamId}`, { replace: true })
+        } finally {
+          setDeleting(false)
+        }
+      },
+    })
+  }
+
+  const handleDeleteFile = (file: ProjectFile) => {
+    Modal.confirm({
+      centered: true,
+      title: `删除原型“${file.name}”`,
+      content: '这将永久删除 ZIP、解析页面、评论和分享链接，无法恢复。',
+      okText: '确认删除',
+      okButtonProps: { danger: true, loading: deletingFileId === file.id },
+      cancelText: '取消',
+      onOk: async () => {
+        setDeletingFileId(file.id)
+        try {
+          await deleteProjectFile(projectId, file.id)
+          await loadProject(false)
+          message.success('原型文件已删除')
+        } finally {
+          setDeletingFileId(null)
+        }
+      },
+    })
+  }
+
   const openPermissionManager = async (file: ProjectFile) => {
     setPermissionFile(file); setPermissionsLoading(true)
     try { setPermissionMembers(await getProjectFilePermissions(projectId, file.id)) }
@@ -112,7 +160,7 @@ export function ProjectDetailPage() {
     const stateText = file.parseStatus === 'success' ? '解析完成' : file.parseStatus === 'parsing' ? '解析中' : '解析失败'
     return <div key={file.id} className="hd-asset-row" role={canPreview ? 'button' : undefined} tabIndex={canPreview ? 0 : undefined} onClick={() => canPreview && navigate(`/files/${file.id}/preview`)}>
       <div className="hd-asset-main"><div className="hd-asset-icon"><FileZipOutlined /></div><div className="hd-asset-info"><div className="hd-asset-title">{file.name}</div><div className="hd-asset-desc">{file.originalFilename} · 上传人：{file.uploader}</div><div className="hd-asset-meta"><span>{file.parseStatus === 'success' ? `${file.pageCount} 个页面` : file.parseStatus === 'parsing' ? '正在扫描页面目录…' : '无法读取页面目录'}</span><span>{formatDate(file.updatedAt)}</span><span className={`hd-status-tag${canPreview ? ' is-done' : ' is-review'}`}>{stateText}</span></div>{file.parseStatus === 'failed' ? <div className="hd-parse-error">{file.parseError ?? '无法解析该 ZIP 文件'} <Button size="small" loading={retryingFileId === file.id} disabled={project?.permission !== 'edit'} onClick={(event) => { event.stopPropagation(); void handleRetryParse(file.id) }}>重新解析</Button></div> : null}</div></div>
-      <div className="hd-asset-actions">{canPreview ? <button type="button" className="hd-icon-btn" title="预览" aria-label={`预览 ${file.name}`} onClick={(event) => { event.stopPropagation(); navigate(`/files/${file.id}/preview`) }}><EyeOutlined /></button> : null}{canPreview && project?.permission === 'edit' ? <button type="button" className="hd-icon-btn" title="管理分享" aria-label={`管理 ${file.name} 的分享链接`} onClick={(event) => { event.stopPropagation(); navigate(`/files/${file.id}/preview?share=manage`) }}><ShareAltOutlined /></button> : null}{project?.permission === 'edit' ? <button type="button" className="hd-icon-btn" title="文件权限" aria-label={`管理 ${file.name} 的文件权限`} onClick={(event) => { event.stopPropagation(); void openPermissionManager(file) }}><LockOutlined /></button> : null}</div>
+      <div className="hd-asset-actions">{canPreview ? <button type="button" className="hd-icon-btn" title="预览" aria-label={`预览 ${file.name}`} onClick={(event) => { event.stopPropagation(); navigate(`/files/${file.id}/preview`) }}><EyeOutlined /></button> : null}{canPreview && project?.permission === 'edit' ? <button type="button" className="hd-icon-btn" title="管理分享" aria-label={`管理 ${file.name} 的分享链接`} onClick={(event) => { event.stopPropagation(); navigate(`/files/${file.id}/preview?share=manage`) }}><ShareAltOutlined /></button> : null}{project?.permission === 'edit' ? <button type="button" className="hd-icon-btn" title="文件权限" aria-label={`管理 ${file.name} 的文件权限`} onClick={(event) => { event.stopPropagation(); void openPermissionManager(file) }}><LockOutlined /></button> : null}{file.canDelete ? <button type="button" className="hd-icon-btn" title="删除原型" aria-label={`删除 ${file.name}`} onClick={(event) => { event.stopPropagation(); handleDeleteFile(file) }}><DeleteOutlined /></button> : null}</div>
     </div>
   }
 
@@ -121,7 +169,7 @@ export function ProjectDetailPage() {
       {error ? <PageError title="项目详情加载失败" description={error} action={{ label: '重新加载', onClick: () => void loadProject() }} /> : null}
       {loading ? <PageLoading label="正在加载项目与原型资产" /> : null}
       {project ? <>
-        <section className="hd-hero-panel hd-project-hero"><div className="hd-project-header-row"><div><div className="hd-project-kicker">项目工作台</div><h1>{project.name}</h1><p>{project.description}</p></div><div className="hd-hero-actions"><Button className="hd-btn-secondary" disabled title="分享链接按原型文件创建，请在对应文件的操作栏中管理"><ShareAltOutlined /> 分享原型</Button><Button type="primary" className="hd-btn-primary" disabled={project.permission !== 'edit'} title={project.permission === 'edit' ? '上传 HTML 或 Axure 导出的 ZIP 原型文件' : '当前账号只有查看权限，无法上传文件'} onClick={() => { setSelectedFolderId(undefined); setUploadOpen(true) }}><UploadOutlined /> {project.permission === 'edit' ? '上传 ZIP' : '仅查看权限'}</Button></div></div>{project.permission !== 'edit' ? <Alert className="hd-project-permission-note" type="info" showIcon message="当前账号仅拥有查看权限，不能上传、创建文件夹或修改文件权限。请使用项目编辑者账号登录。" /> : null}<div className="hd-team-meta-row"><span className="hd-meta-pill"><FileZipOutlined /> {project.stats.fileCount} 个原型文件</span><span className="hd-meta-pill">{project.stats.collaboratorCount} 位协作者</span><span className="hd-meta-pill">{project.stats.pendingCommentCount} 条待处理评论</span><span className="hd-meta-pill">{project.stats.pageCountEstimate} 个页面</span></div></section>
+        <section className="hd-hero-panel hd-project-hero"><div className="hd-project-header-row"><div><div className="hd-project-kicker">项目工作台</div><h1>{project.name}</h1><p>{project.description}</p></div><div className="hd-hero-actions"><Button className="hd-btn-secondary" disabled title="分享链接按原型文件创建，请在对应文件的操作栏中管理"><ShareAltOutlined /> 分享原型</Button><Button type="primary" className="hd-btn-primary" disabled={project.permission !== 'edit'} title={project.permission === 'edit' ? '上传 HTML 或 Axure 导出的 ZIP 原型文件' : '当前账号只有查看权限，无法上传文件'} onClick={() => { setSelectedFolderId(undefined); setUploadOpen(true) }}><UploadOutlined /> {project.permission === 'edit' ? '上传 ZIP' : '仅查看权限'}</Button>{project.canDelete ? <Button danger loading={deleting} onClick={handleDeleteProject}><DeleteOutlined /> 删除项目</Button> : null}</div></div>{project.permission !== 'edit' ? <Alert className="hd-project-permission-note" type="info" showIcon message="当前账号仅拥有查看权限，不能上传、创建文件夹或修改文件权限。请使用项目编辑者账号登录。" /> : null}<div className="hd-team-meta-row"><span className="hd-meta-pill"><FileZipOutlined /> {project.stats.fileCount} 个原型文件</span><span className="hd-meta-pill">{project.stats.collaboratorCount} 位协作者</span><span className="hd-meta-pill">{project.stats.pendingCommentCount} 条待处理评论</span><span className="hd-meta-pill">{project.stats.pageCountEstimate} 个页面</span></div></section>
         <section className="hd-section-panel"><div className="hd-page-toolbar"><div><h2>原型资产</h2><p>文件来自当前项目的真实 ZIP 解析结果，可直接进入在线预览。</p></div><div className="hd-toolbar-actions"><Button className="hd-btn-secondary" disabled={project.permission !== 'edit'} onClick={() => setFolderOpen(true)}><FolderAddOutlined /> 新建文件夹</Button><Button className="hd-btn-secondary" disabled={project.permission !== 'edit'} onClick={() => { setSelectedFolderId(undefined); setUploadOpen(true) }}><UploadOutlined /> 上传 HTML 原型 ZIP</Button></div></div><div className="hd-asset-toolbar"><label className="hd-search-box"><SearchOutlined aria-hidden="true" /><Input variant="borderless" placeholder="搜索文件名" value={keyword} onChange={(e) => setKeyword(e.target.value)} allowClear /></label>{hasParsingFiles ? <span className="hd-parse-polling">正在自动刷新解析进度…</span> : null}</div>{folders.map((folder) => <div key={folder.id} className="hd-folder-block"><div className="hd-folder-heading"><FolderAddOutlined /> {folder.name} <span>{folder.files.length} 个文件</span><Button size="small" disabled={project.permission !== 'edit'} onClick={() => { setSelectedFolderId(folder.id); setUploadOpen(true) }}><UploadOutlined /> 上传到此处</Button></div><div className="hd-asset-list">{folder.files.filter((file) => filteredFiles.some((current) => current.id === file.id)).map(renderFileRow)}</div></div>)}<div className="hd-asset-list">{filteredFiles.filter((file) => !file.folderId).map(renderFileRow)}{filteredFiles.length === 0 ? <PageEmpty variant="files" title={keyword ? '没有匹配的原型文件' : '当前项目还没有原型文件'} description={keyword ? '请调整搜索关键词后重试。' : '上传 HTML 或 Axure 导出的 ZIP 后，系统会自动生成页面目录与受控预览。'} action={!keyword && project.permission === 'edit' ? { label: '上传 ZIP', onClick: () => { setSelectedFolderId(undefined); setUploadOpen(true) } } : undefined} /> : null}</div><button type="button" className="hd-dropzone" disabled={project.permission !== 'edit'} onClick={() => { setSelectedFolderId(undefined); setUploadOpen(true) }}><div className="hd-dropzone__emoji"><InboxOutlined /></div><h3>上传 ZIP 原型文件</h3><p>系统会自动校验、解析页面目录并生成受控在线预览。</p></button></section>
       </> : null}
     </div>

@@ -11,12 +11,21 @@ export interface ParsedHtmlPage {
   sortOrder: number
 }
 
+// Upload bytes are limited at the HTTP boundary. These limits cap the expanded
+// archive as well, preventing a small compressed ZIP from exhausting disk or
+// worker time during extraction.
+const MAX_ARCHIVE_ENTRIES = 10_000
+const MAX_SINGLE_ENTRY_BYTES = 100 * 1024 * 1024
+const MAX_UNCOMPRESSED_BYTES = 500 * 1024 * 1024
+
 @Injectable()
 export class ZipParserService {
   async extractAndScan(zipPath: string, targetDirectory: string): Promise<ParsedHtmlPage[]> {
+    await fs.rm(targetDirectory, { recursive: true, force: true })
     await fs.mkdir(targetDirectory, { recursive: true })
     const root = resolve(targetDirectory)
     const directory = await unzipper.Open.file(zipPath)
+    this.assertSafeArchive(directory.files)
 
     for (const entry of directory.files) {
       if (entry.type === 'Directory') continue
@@ -72,6 +81,28 @@ export class ZipParserService {
       throw new BadRequestException({ errorCode: 'VALIDATION_ERROR', message: '资源路径不安全' })
     }
     return normalized
+  }
+
+  assertSafeArchive(entries: Array<{ path: string; type: string; uncompressedSize?: number }>): void {
+    if (entries.length > MAX_ARCHIVE_ENTRIES) {
+      throw new BadRequestException({ errorCode: 'ZIP_PARSE_FAILED', message: 'ZIP 文件条目数量超出限制' })
+    }
+
+    let totalUncompressedBytes = 0
+    for (const entry of entries) {
+      if (entry.type !== 'Directory' && entry.type !== 'File') {
+        throw new BadRequestException({ errorCode: 'ZIP_PARSE_FAILED', message: 'ZIP 包含不支持的文件类型' })
+      }
+      this.assertSafeRelativePath(entry.path)
+      const size = entry.uncompressedSize ?? 0
+      if (!Number.isFinite(size) || size < 0 || size > MAX_SINGLE_ENTRY_BYTES) {
+        throw new BadRequestException({ errorCode: 'ZIP_PARSE_FAILED', message: 'ZIP 包含超出限制的文件' })
+      }
+      totalUncompressedBytes += size
+      if (totalUncompressedBytes > MAX_UNCOMPRESSED_BYTES) {
+        throw new BadRequestException({ errorCode: 'ZIP_PARSE_FAILED', message: 'ZIP 解压后的总大小超出限制' })
+      }
+    }
   }
 
   private safeDestination(root: string, entryPath: string): string {

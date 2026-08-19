@@ -1,6 +1,8 @@
-﻿import { ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common'
+import { ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common'
 import type { ProjectPermissionLevel, TeamRole } from '@prisma/client'
+import { rm } from 'node:fs/promises'
 import { PrismaService } from '../prisma/prisma.service'
+import { StorageService } from '../storage/storage.service'
 
 const SESSION_COOKIE = 'hd_sid'
 
@@ -14,7 +16,10 @@ export interface CurrentUser {
 
 @Injectable()
 export class CurrentUserService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+  ) {}
 
   async getCurrentUserFromToken(token?: string): Promise<CurrentUser> {
     if (!token) throw new UnauthorizedException({ errorCode: 'UNAUTHORIZED', message: '未登录' })
@@ -106,6 +111,7 @@ export type ProjectDetailResponse = {
   name: string
   description: string
   permission: 'view' | 'edit'
+  canDelete: boolean
   stats: {
     fileCount: number
     collaboratorCount: number
@@ -116,7 +122,10 @@ export type ProjectDetailResponse = {
 
 @Injectable()
 export class WorkspaceService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+  ) {}
 
   async getWorkspace(userId: string) {
     const memberships = await this.prisma.teamMember.findMany({
@@ -307,7 +316,11 @@ export class WorkspaceService {
       include: {
         project: {
           include: {
-            team: true,
+            team: {
+              include: {
+                members: { where: { userId }, select: { role: true } },
+              },
+            },
             permissions: true,
             _count: { select: { files: true } },
           },
@@ -324,6 +337,7 @@ export class WorkspaceService {
       name: permission.project.name,
       description: permission.project.description,
       permission: this.mapProjectPermission(permission.level),
+      canDelete: permission.project.team.members[0]?.role === 'ADMIN',
       stats: {
         fileCount: permission.project._count.files,
         collaboratorCount: permission.project.permissions.length,
@@ -382,6 +396,8 @@ export class WorkspaceService {
 
   async deleteTeam(userId: string, teamId: string) {
     await this.requireTeamAdmin(userId, teamId)
+    const projects = await this.prisma.project.findMany({ where: { teamId }, select: { id: true } })
+    for (const project of projects) await this.deleteProjectAssets(project.id)
     await this.prisma.team.delete({ where: { id: teamId } })
   }
 
@@ -457,7 +473,7 @@ export class WorkspaceService {
         id: true,
         uploaderId: true,
         projectId: true,
-        extractedPath: true,
+        storageKey: true,
         entryPageId: true,
         permissions: { where: { userId }, select: { canView: true, canComment: true, canEdit: true, canDelete: true } },
         shareLinks: { where: { status: 'ACTIVE', expiresAt: { gt: new Date() }, grants: { some: { userId } } }, select: { id: true }, take: 1 },
@@ -487,11 +503,15 @@ export class WorkspaceService {
 
   async listProjectFiles(userId: string, projectId: string) {
     await this.requireProjectView(userId, projectId)
+    const membership = await this.prisma.teamMember.findFirst({ where: { userId, team: { projects: { some: { id: projectId } } } }, select: { role: true } })
+    const isTeamAdmin = membership?.role === 'ADMIN'
     const files = await this.prisma.prototypeFile.findMany({
-      where: { projectId, OR: [{ uploaderId: userId }, { permissions: { some: { userId, canView: true } } }] },
+      where: isTeamAdmin ? { projectId } : { projectId, OR: [{ uploaderId: userId }, { permissions: { some: { userId, canView: true } } }] },
       include: { uploader: { select: { username: true } } },
       orderBy: { updatedAt: 'desc' },
     })
+    const filePermissions = await this.prisma.filePermission.findMany({ where: { userId, fileId: { in: files.map((file) => file.id) } }, select: { fileId: true, canDelete: true } })
+    const permissionsByFileId = new Map(filePermissions.map((permission) => [permission.fileId, permission.canDelete]))
     return files.map((file) => ({
       id: file.id,
       folderId: file.folderId,
@@ -502,10 +522,32 @@ export class WorkspaceService {
       pageCount: file.pageCount,
       fileSize: file.fileSize,
       uploader: file.uploader.username,
+      canDelete: isTeamAdmin || file.uploaderId === userId || permissionsByFileId.get(file.id) === true,
       entryPageId: file.entryPageId,
       createdAt: file.createdAt,
       updatedAt: file.updatedAt,
     }))
+  }
+
+  async deleteProjectFile(userId: string, projectId: string, fileId: string) {
+    const file = await this.prisma.prototypeFile.findFirst({
+      where: { id: fileId, projectId },
+      select: { id: true, uploaderId: true, storageKey: true, project: { select: { teamId: true } } },
+    })
+    if (!file) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '项目文件不存在' })
+    if (!file.project) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '项目文件不存在' })
+    const membership = await this.requireTeamMember(userId, file.project.teamId)
+    const permission = await this.prisma.filePermission.findUnique({ where: { fileId_userId: { fileId, userId } }, select: { canDelete: true } })
+    if (membership.role !== 'ADMIN' && file.uploaderId !== userId && !permission?.canDelete) {
+      throw new ForbiddenException({ errorCode: 'FORBIDDEN', message: '没有删除该原型文件的权限' })
+    }
+    await this.prisma.prototypeFile.delete({ where: { id: fileId } })
+    if (file.storageKey) {
+      await Promise.allSettled([
+        rm(this.storage.getOriginalZipPath(file.storageKey), { recursive: true, force: true }),
+        rm(this.storage.getExtractedPath(file.storageKey), { recursive: true, force: true }),
+      ])
+    }
   }
 
   async getFilePermission(userId: string, fileId: string) {
@@ -694,7 +736,24 @@ export class WorkspaceService {
     const project = await this.prisma.project.findUnique({ where: { id: projectId }, select: { teamId: true } })
     if (!project) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '项目不存在' })
     await this.requireTeamAdmin(userId, project.teamId)
+    await this.deleteProjectAssets(projectId)
     await this.prisma.project.delete({ where: { id: projectId } })
+  }
+
+  private async deleteProjectAssets(projectId: string) {
+    const files = await this.prisma.prototypeFile.findMany({
+      where: { projectId },
+      select: { storageKey: true },
+    })
+    await this.prisma.prototypeFile.deleteMany({ where: { projectId } })
+    await Promise.allSettled(
+      files
+        .filter((file) => file.storageKey)
+        .flatMap((file) => [
+          rm(this.storage.getOriginalZipPath(file.storageKey), { recursive: true, force: true }),
+          rm(this.storage.getExtractedPath(file.storageKey), { recursive: true, force: true }),
+        ]),
+    )
   }
 
   private async requireTeamMember(userId: string, teamId: string) {

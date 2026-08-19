@@ -13,10 +13,8 @@ dist-seed/
 # Database
 prisma/*.db
 prisma/*.db-journal
-prisma/migrations/
 
 # Uploaded prototypes & extracted resources
-storage/
 
 # IDE
 .vscode/*

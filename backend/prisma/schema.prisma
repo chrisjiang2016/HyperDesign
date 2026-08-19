@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -85,8 +85,7 @@ model PrototypeFile {
   folderId         String?
   name             String
   originalFilename String
-  originalZipPath  String
-  extractedPath    String?
+  storageKey       String               // 相对存储路径，格式: uploads/{fileId}
   fileSize         Int
   parseStatus      PrototypeParseStatus @default(PARSING)
   parseError       String?

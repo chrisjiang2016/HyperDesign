@@ -5,6 +5,13 @@ import { generateRandomUsername, login, logout, waitForLoadingComplete } from '.
 test.describe('团队、项目与权限管理', () => {
   const adminUsername = 'admin';
   const adminPassword = 'Demo123456';
+  let createdTeamId: string | undefined;
+
+  test.afterEach(async ({ page }) => {
+    if (!createdTeamId) return;
+    await page.request.delete(`/api/teams/${createdTeamId}`);
+    createdTeamId = undefined;
+  });
 
   test('管理员可以创建团队并在团队内创建项目', async ({ page }) => {
     const suffix = Date.now();
@@ -24,6 +31,7 @@ test.describe('团队、项目与权限管理', () => {
     await teamCard.click();
     await page.waitForURL(/\/teams\//, { timeout: 5000 });
     const teamId = new URL(page.url()).pathname.split('/').at(-1)!;
+    createdTeamId = teamId;
     await expect(page.locator('.hd-team-title')).toHaveText(teamName);
     await page.getByRole('button', { name: '新建项目', exact: true }).click();
     const projectDialog = page.getByRole('dialog', { name: '新建项目' });

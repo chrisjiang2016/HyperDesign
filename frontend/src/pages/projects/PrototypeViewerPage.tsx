@@ -426,6 +426,10 @@ export function PrototypeViewerPage() {
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      // Only the currently rendered, same-origin prototype iframe may update
+      // Viewer inspector state. Ignore arbitrary windows that can otherwise
+      // send postMessage payloads to this page.
+      if (event.source !== iframeRef.current?.contentWindow || event.origin !== window.location.origin) return
       const data = event.data
       if (!data || typeof data !== 'object') return
 

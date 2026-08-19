@@ -31,7 +31,7 @@ export default defineConfig({
   /* 所有测试共享配置 */
   use: {
     /* 基础 URL */
-    baseURL: 'http://127.0.0.1:5173',
+    baseURL: process.env.E2E_BASE_URL ?? 'http://127.0.0.1:8080',
     
     /* 失败时截图 */
     screenshot: 'only-on-failure',
@@ -51,15 +51,8 @@ export default defineConfig({
     },
   ],
 
-  /*
-   * 本地 E2E 改为优先复用已启动的前后端服务。
-   * 原因：Vite strictPort + Playwright webServer 自动起停在 Windows 上会出现端口争抢，
-   * 导致后续用例拿到 ERR_CONNECTION_REFUSED，污染真实失败结果。
-   *
-   * 推荐本地执行顺序：
-   * 1. backend: npm start（3001）
-   * 2. frontend: npm run dev -- --host 127.0.0.1 --strictPort（5173）
-   * 3. frontend: npm run test:e2e
-   */
+  /* Deployment-prep E2E runs against the production-shaped Docker Web
+   * container. This exercises Nginx, the MySQL-backed API, and storage mounts
+   * without introducing a separate Vite dev-server lifecycle. */
   webServer: undefined,
 });

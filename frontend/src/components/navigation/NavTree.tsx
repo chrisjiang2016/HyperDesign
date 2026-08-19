@@ -68,9 +68,16 @@ export function NavTree({ sections = ['workbench', 'favorites'] }: NavTreeProps)
                         <button
                           type="button"
                           className="hd-nav-parent hd-nav-parent--nested"
-                          onClick={() => toggleGroup(teamGroupId)}
+                          onClick={() => navigate(`/teams/${team.id}`)}
                         >
-                          <CaretDownOutlined className="hd-nav-caret" aria-hidden="true" />
+                          <CaretDownOutlined
+                            className="hd-nav-caret"
+                            aria-hidden="true"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              toggleGroup(teamGroupId)
+                            }}
+                          />
                           <span className="hd-team-color" style={{ background: team.color }} />
                           <span className="hd-nav-label">{team.name}</span>
                           <span className="hd-nav-meta">{team.projectCount}</span>

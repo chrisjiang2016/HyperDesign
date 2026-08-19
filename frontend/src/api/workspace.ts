@@ -80,6 +80,7 @@ export type ProjectDetail = {
   name: string
   description: string
   permission: 'view' | 'edit'
+  canDelete: boolean
   stats: {
     fileCount: number
     collaboratorCount: number
@@ -98,6 +99,7 @@ export type ProjectFile = {
   pageCount: number
   fileSize: number
   uploader: string
+  canDelete: boolean
   entryPageId: string | null
   createdAt: string
   updatedAt: string
@@ -189,6 +191,10 @@ export async function getTeamDetail(teamId: string) {
   return (await http.get<ApiResponse<TeamDetail>>(`/teams/${teamId}`)).data.data
 }
 
+export async function deleteTeam(teamId: string) {
+  return (await http.delete<ApiResponse<null>>(`/teams/${teamId}`)).data.data
+}
+
 export async function createProject(teamId: string, payload: { name: string; description?: string }) {
   return (await http.post<ApiResponse<{ id: string }>>(`/teams/${teamId}/projects`, payload)).data.data
 }
@@ -197,8 +203,16 @@ export async function getProjectDetail(projectId: string) {
   return (await http.get<ApiResponse<ProjectDetail>>(`/projects/${projectId}`)).data.data
 }
 
+export async function deleteProject(projectId: string) {
+  return (await http.delete<ApiResponse<null>>(`/projects/${projectId}`)).data.data
+}
+
 export async function getProjectFiles(projectId: string) {
   return (await http.get<ApiResponse<ProjectFile[]>>(`/projects/${projectId}/files`)).data.data
+}
+
+export async function deleteProjectFile(projectId: string, fileId: string) {
+  return (await http.delete<ApiResponse<null>>(`/projects/${projectId}/files/${fileId}`)).data.data
 }
 
 export async function retryProjectFileParse(projectId: string, fileId: string) {

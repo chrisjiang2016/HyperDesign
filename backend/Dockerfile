@@ -19,19 +19,26 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 COPY package.json package-lock.json ./
-RUN npm ci && npm cache clean --force
+# The runtime only needs application dependencies. Prisma is deliberately a
+# production dependency because startup executes `prisma migrate deploy`; omitting all
+# other dev tooling removes the Nest CLI, Jest, TypeScript and test stack from
+# the published image.
+RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
 
-COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=build /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/dist-seed ./dist-seed
-COPY prisma ./prisma
+# Set ownership as files enter the runtime stage. A final `chown -R /app`
+# duplicates every installed dependency in a separate image layer.
+COPY --chown=node:node --from=build /app/node_modules/.prisma ./node_modules/.prisma
+COPY --chown=node:node --from=build /app/node_modules/@prisma ./node_modules/@prisma
+COPY --chown=node:node --from=build /app/dist ./dist
+COPY --chown=node:node --from=build /app/dist-seed ./dist-seed
+COPY --chown=node:node prisma ./prisma
 
 RUN mkdir -p /app/data /app/storage \
-  && chown -R node:node /app
+  && chown node:node /app/data /app/storage
 USER node
 
 EXPOSE 3001
 # The seed script uses upserts, so it safely creates demo accounts on first
 # startup and refreshes their credentials on subsequent local restarts.
-CMD ["sh", "-c", "npx prisma db push --skip-generate && node dist-seed/seed.js && node dist/src/main.js"]
+# Use migrate deploy in production to apply versioned migrations.
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist-seed/seed.js && node dist/src/main.js"]

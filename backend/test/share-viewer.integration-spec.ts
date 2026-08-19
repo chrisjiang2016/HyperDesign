@@ -3,17 +3,18 @@ import { ValidationPipe } from '@nestjs/common'
 import cookieParser from 'cookie-parser'
 import type { INestApplication } from '@nestjs/common'
 import request from 'supertest'
-import { mkdtemp, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { AppModule } from '../src/app.module'
 import { PrismaService } from '../src/prisma/prisma.service'
+import { StorageService } from '../src/storage/storage.service'
 
 const sessionCookiePattern = /^hd_sid=([^;]+)/
 
 describe('Sprint 6B-2 HTTP integration: session share access lifecycle', () => {
   let app: INestApplication
   let prisma: PrismaService
+  let storage: StorageService
   let ownerCookie: string
   let guestCookie: string
   let fileId: string
@@ -22,7 +23,10 @@ describe('Sprint 6B-2 HTTP integration: session share access lifecycle', () => {
   let previewDirectory: string
 
   beforeAll(async () => {
-    process.env.DATABASE_URL = 'file:./integration-test.db'
+    if (!process.env.TEST_DATABASE_URL) {
+      throw new Error('TEST_DATABASE_URL is required for integration tests')
+    }
+    process.env.DATABASE_URL = process.env.TEST_DATABASE_URL
     process.env.SESSION_COOKIE_SECURE = 'false'
     const module = await Test.createTestingModule({ imports: [AppModule] }).compile()
     app = module.createNestApplication()
@@ -31,6 +35,7 @@ describe('Sprint 6B-2 HTTP integration: session share access lifecycle', () => {
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }))
     await app.init()
     prisma = app.get(PrismaService)
+    storage = app.get(StorageService)
   })
 
   afterAll(async () => {
@@ -79,7 +84,7 @@ describe('Sprint 6B-2 HTTP integration: session share access lifecycle', () => {
         projectId: project.id,
         name: 'Integration Prototype',
         originalFilename: 'integration.zip',
-        originalZipPath: 'test-fixture.zip',
+        storageKey: 'uploads/pending',
         fileSize: 1,
         uploaderId: ownerId,
         permissions: { create: { userId: ownerId, grantedById: ownerId, canView: true, canComment: true, canEdit: true, canDelete: true } },
@@ -87,9 +92,11 @@ describe('Sprint 6B-2 HTTP integration: session share access lifecycle', () => {
     })
     fileId = file.id
 
-    previewDirectory = await mkdtemp(join(tmpdir(), 'hyperdesign-preview-'))
+    const storageKey = storage.generateStorageKey(fileId)
+    previewDirectory = storage.getExtractedPath(storageKey)
+    await mkdir(previewDirectory, { recursive: true })
     await writeFile(join(previewDirectory, 'index.html'), '<!doctype html><title>Preview fixture</title>')
-    await prisma.prototypeFile.update({ where: { id: fileId }, data: { extractedPath: previewDirectory } })
+    await prisma.prototypeFile.update({ where: { id: fileId }, data: { storageKey } })
 
     await request(app.getHttpServer()).get(`/api/files/${fileId}/pages`).set('Cookie', guestCookie).expect(400)
   })

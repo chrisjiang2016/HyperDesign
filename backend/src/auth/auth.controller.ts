@@ -162,6 +162,13 @@ export class AuthController {
     return ok(await this.workspaceService.listProjectFiles(user.id, projectId), '项目文件列表获取成功')
   }
 
+  @Delete('projects/:projectId/files/:fileId')
+  async deleteProjectFile(@Req() request: Request, @Param('projectId') projectId: string, @Param('fileId') fileId: string) {
+    const user = await this.currentUserService.getCurrentUserFromToken(request.cookies?.[SESSION_COOKIE])
+    await this.workspaceService.deleteProjectFile(user.id, projectId, fileId)
+    return ok(null, '原型文件已删除')
+  }
+
   @Get('projects/:projectId/first-preview')
   async firstPreview(@Req() request: Request, @Param('projectId') projectId: string) {
     const user = await this.currentUserService.getCurrentUserFromToken(request.cookies?.[SESSION_COOKIE])

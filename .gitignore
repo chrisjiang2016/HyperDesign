@@ -20,6 +20,11 @@ dist-seed/
 storage/
 data/
 
+# The backend StorageService is source code, not uploaded prototype data.
+!backend/src/
+!backend/src/storage/
+!backend/src/storage/**
+
 # Docker volumes (do not commit real data)
 volumes/
 

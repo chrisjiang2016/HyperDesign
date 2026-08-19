@@ -117,7 +117,7 @@ test.describe('文件上传、解析与预览', () => {
       .toBe(true);
   });
 
-  test('匿名访问预览资源应返回 401', async ({ page, context }) => {
+  test('匿名访问预览资源应返回 401', async ({ page, context, baseURL }) => {
     await login(page, 'chrisj', 'Demo123456');
     await openSeedProject(page, 'project-1');
     const displayName = await uploadPrototypeZip(page, {
@@ -131,7 +131,7 @@ test.describe('文件上传、解析与预览', () => {
     expect(src).toBeTruthy();
 
     await context.clearCookies();
-    const response = await page.request.get(src!.startsWith('http') ? src! : `http://localhost:5173${src}`);
+    const response = await page.request.get(src!.startsWith('http') ? src! : new URL(src!, baseURL).toString());
     expect(response.status()).toBe(401);
   });
 });

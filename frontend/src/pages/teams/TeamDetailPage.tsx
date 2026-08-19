@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Button, Form, Input, Modal, message } from 'antd'
-import { PlusOutlined, SearchOutlined, UserAddOutlined } from '@ant-design/icons'
+import { DeleteOutlined, PlusOutlined, SearchOutlined, UserAddOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
-import { createProject, getTeamDetail, type TeamDetail } from '@/api/workspace'
+import { createProject, deleteTeam, getTeamDetail, type TeamDetail } from '@/api/workspace'
 import { AppShellLayout } from '@/layouts/AppLayouts'
 import { RightPanel } from '@/components/workspace/RightPanel'
 import { PageEmpty, PageError, PageLoading } from '@/components/common/pagestates'
@@ -25,6 +25,7 @@ export function TeamDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [projectOpen, setProjectOpen] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [form] = Form.useForm<NewProjectValues>()
   const fetchNavTeams = useWorkspaceStore((state) => state.fetchNavTeams)
 
@@ -70,6 +71,29 @@ export function TeamDetailPage() {
     }
   }
 
+  const handleDeleteTeam = () => {
+    if (!team) return
+    Modal.confirm({
+      centered: true,
+      title: `删除团队“${team.name}”`,
+      content: '这将永久删除团队及其项目、原型文件和协作数据，无法恢复。',
+      okText: '确认删除',
+      okButtonProps: { danger: true, loading: deleting },
+      cancelText: '取消',
+      onOk: async () => {
+        setDeleting(true)
+        try {
+          await deleteTeam(team.id)
+          await fetchNavTeams()
+          message.success('团队已删除')
+          navigate('/', { replace: true })
+        } finally {
+          setDeleting(false)
+        }
+      },
+    })
+  }
+
   return (
     <AppShellLayout
       breadcrumb={<><span>我的团队</span><span>/</span><span className="is-current">{team?.name ?? '团队详情'}</span></>}
@@ -91,6 +115,7 @@ export function TeamDetailPage() {
             <div className="hd-hero-actions">
               <Button type="primary" className="hd-btn-primary" disabled={team.roleLabel !== '管理员'} onClick={() => setProjectOpen(true)}><PlusOutlined /> 新建项目</Button>
               <Button className="hd-btn-secondary" disabled title="成员邀请将在协作权限完善后开放"><UserAddOutlined /> 邀请成员</Button>
+              {team.roleLabel === '管理员' ? <Button danger loading={deleting} onClick={handleDeleteTeam}><DeleteOutlined /> 删除团队</Button> : null}
             </div>
           </section>
 
