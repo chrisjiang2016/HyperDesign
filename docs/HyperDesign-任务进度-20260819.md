@@ -1,5 +1,51 @@
 # HyperDesign 开发任务进度记录
 
+## 2026-08-20 - 生产基础收口完成
+
+### 完成内容
+
+- [x] API 生产容器启动命令移除自动演示 seed，仅执行 `prisma migrate deploy` 后启动服务。
+- [x] 新增 `prisma/init-admin.ts` 显式管理员初始化脚本：强制 5-64 位用户名、12-128 位强密码，拒绝密码包含用户名，拒绝覆盖已有账号。
+- [x] 新增管理员初始化单元测试，覆盖凭据校验、密码哈希、超级管理员创建和重复账号保护。
+- [x] 默认 Compose 强制 `MYSQL_ROOT_PASSWORD`、`MYSQL_PASSWORD` 非空，不再提供 `changeme` 回退。
+- [x] 默认 Compose 不发布 MySQL 宿主机端口；新增 `docker-compose.dev.yml`，仅为本地集成测试绑定 `127.0.0.1:3306`。
+- [x] Web 默认仅绑定 `127.0.0.1:8080`，由生产反向代理提供公网 HTTPS 入口。
+- [x] README、MySQL 部署指南和部署前检查清单已更新为新的生产契约。
+
+### 验证结果
+
+```text
+后端单元测试：5 suites / 36 tests passed
+后端构建：passed
+后端 lint：0 errors / 4 existing warnings
+前端构建：passed（保留单个 510 kB chunk warning）
+生产 Compose 静态校验：passed
+开发 override Compose 静态校验：passed
+空 MySQL 密码拒绝校验：passed
+生产端口检查：MySQL 无宿主机端口，Web 仅 127.0.0.1:8080
+开发端口检查：MySQL 仅 127.0.0.1:3306
+管理员脚本 Docker 构建命令：生成 dist-admin/init-admin.js
+隔离生产镜像构建与 Compose 启动：passed
+全新数据库默认用户数：0
+显式管理员创建、登录、会话恢复：passed
+重复管理员初始化保护：passed（exit code 1）
+API 容器重建后管理员登录：passed
+Docker 生产形态 E2E：16 passed / 1 skipped / 0 failed
+Prisma OpenSSL warning：已通过镜像安装 OpenSSL 消除
+```
+
+### 安全审计边界
+
+`npm audit --omit=dev --audit-level=high` 报告 3 个 high，来源为 Prisma CLI 的 `@prisma/config` / `deepmerge-ts` 依赖链。自动修复会强制切换 Prisma 版本，因此未混入本次生产收口；需作为独立依赖安全切片评估、升级并完整回归。
+
+本次隔离生产冒烟使用独立 Compose 项目、MySQL 卷和临时存储目录；验证结束后已全部删除，没有改动原开发数据库和存储。
+
+### 下一步
+
+1. 独立评估 Prisma CLI 依赖审计风险，选择兼容版本并执行完整回归。
+2. 在 Linux 服务器落实域名、HTTPS、存储目录、日志轮转以及 MySQL/文件备份恢复演练。
+3. 进入下一工程化切片：Redis 与分布式限流基础设施。
+
 ## 2026-08-19 - SQLite → MySQL 迁移 + Docker 部署就绪
 
 ### 任务背景

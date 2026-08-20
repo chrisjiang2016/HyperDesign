@@ -30,7 +30,10 @@
 - [x] 存储卷从命名卷改为目录绑定（`STORAGE_HOST_PATH`）
 - [x] Web 服务添加只读存储挂载
 - [x] API 服务依赖 MySQL 健康检查
-- [x] MySQL 宿主机端口仅绑定 `127.0.0.1`；生产环境不对外暴露数据库端口
+- [x] 默认 Compose 不发布 MySQL 宿主机端口；本地测试通过 `docker-compose.dev.yml` 显式绑定 `127.0.0.1`
+- [x] MySQL 密码环境变量缺失或为空时 Compose 拒绝解析
+- [x] API 生产启动不再自动执行演示 seed
+- [x] 提供拒绝覆盖已有账号的显式管理员初始化命令
 - [x] 创建 `.env.example` 环境变量模板
 - [x] `docker compose config` 语法验证通过
 
@@ -50,7 +53,7 @@
 - [x] 使用 `docker compose build` 构建镜像
 - [x] 使用 `docker compose up -d` 启动服务
 - [x] 验证所有服务健康：MySQL healthy、API healthy、Web running
-- [x] 进入 API 容器执行数据库迁移和种子数据脚本
+- [x] API 容器启动时执行数据库迁移；演示 seed 仅在本地验收时显式执行
 - [x] 访问 `http://localhost:8080/api/health` 确认 API 可达
 - [x] 访问 `http://localhost:8080` 确认前端可访问
 - [x] 测试登录功能（admin / Demo123456）
@@ -63,7 +66,7 @@
 
 ### E2E 测试验证
 
-- [x] 运行后端单元测试：`npm test`（28/28）
+- [x] 运行后端单元测试：`npm test`（5 suites / 36 tests）
 - [x] 运行后端集成测试：`TEST_DATABASE_URL=mysql://hyperdesign:<密码>@localhost:${MYSQL_HOST_PORT}/hyperdesign_test npm run test:integration`（1 suite / 9 tests）
 - [x] 验证完整 Playwright E2E 通过（16 passed，1 skipped，0 failed）
 
@@ -95,14 +98,16 @@
 - [ ] 设置生产域名：`APP_ORIGIN=https://your-domain.com`
 - [ ] 启用 Cookie Secure：`SESSION_COOKIE_SECURE=true`
 - [ ] 设置存储路径：`STORAGE_HOST_PATH=/opt/hyperdesign/data/storage`
+- [ ] 设置 Web 回环监听：`WEB_BIND_ADDRESS=127.0.0.1`
 
 ### 部署执行
 
 - [ ] 上传代码到服务器
 - [ ] 构建镜像：`docker compose build`
 - [ ] 启动服务：`docker compose up -d`
-- [ ] 运行数据库迁移：`docker compose exec api npx prisma migrate deploy`
-- [ ] 创建管理员账号：`docker compose exec api npx prisma db seed`
+- [ ] 确认 API 启动日志中的版本化 migration 成功
+- [ ] 使用 `dist-admin/init-admin.js` 显式创建真实管理员
+- [ ] 确认生产数据库中不存在 `Demo123456` 演示账号
 
 ### 反向代理配置
 
@@ -142,7 +147,7 @@
 
 ### 测试覆盖
 
-- [x] 后端单元测试：4 suites / 28 tests
+- [x] 后端单元测试：5 suites / 36 tests
 - [x] 后端集成测试：1 suite / 9 tests，分享访问完整生命周期
 - [ ] 前端单元测试：待补充
 - [x] E2E 测试：16 passed，1 skipped，0 failed

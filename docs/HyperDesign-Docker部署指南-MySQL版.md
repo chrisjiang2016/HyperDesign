@@ -74,6 +74,7 @@ MYSQL_PASSWORD=your_secure_password
 APP_ORIGIN=https://your-domain.com  # 生产环境域名
 SESSION_COOKIE_SECURE=true          # HTTPS 环境必须启用
 STORAGE_HOST_PATH=/opt/hyperdesign/data/storage
+WEB_BIND_ADDRESS=127.0.0.1          # 仅允许宿主机反向代理访问
 ```
 
 ### 2. 构建和启动服务
@@ -91,21 +92,17 @@ docker compose logs -f
 
 ### 3. 初始化数据库
 
-首次启动时，需要运行 Prisma 迁移：
+API 容器启动时会自动执行版本化 Prisma migration。首次部署后，显式创建生产管理员：
 
 ```bash
-# 进入 API 容器
-docker compose exec api sh
-
-# 运行数据库迁移
-npx prisma migrate deploy
-
-# 创建初始管理员账号（可选）
-npx prisma db seed
-
-# 退出容器
-exit
+read -rp "Admin username: " ADMIN_USERNAME
+read -rsp "Admin password: " ADMIN_PASSWORD && echo
+export ADMIN_USERNAME ADMIN_PASSWORD
+docker compose exec -e ADMIN_USERNAME -e ADMIN_PASSWORD api node dist-admin/init-admin.js
+unset ADMIN_USERNAME ADMIN_PASSWORD
 ```
+
+用户名必须是 5-64 位英文字母或数字。密码必须为 12-128 位英文字母或数字，同时包含大写字母、小写字母和数字，且不能包含用户名。若同名账号已经存在，命令会失败，不会覆盖密码或权限。
 
 ### 4. 验证部署
 
@@ -127,9 +124,7 @@ curl http://localhost:8080/api/health
 
 打开浏览器访问: `http://localhost:8080`
 
-**默认测试账号**（如果运行了 `prisma db seed`）:
-- 用户名: `admin`
-- 密码: `Demo123456`
+生产环境没有默认账号，请使用上一步创建的管理员登录。`node dist-seed/seed.js` 只允许在本地开发和验收环境执行，禁止在生产环境运行。
 
 ## 日常运维
 
@@ -201,8 +196,7 @@ docker compose build
 # 重启服务
 docker compose up -d
 
-# 运行数据库迁移（如果有）
-docker compose exec api npx prisma migrate deploy
+# API 容器启动时会自动执行待部署的版本化 migration
 ```
 
 ## 生产环境优化
@@ -368,8 +362,9 @@ docker compose exec -T mysql mysql -u hyperdesign -p hyperdesign < sqlite-export
 
 | 变量名 | 默认值 | 说明 |
 |--------|--------|------|
-| `MYSQL_ROOT_PASSWORD` | changeme | MySQL root 密码 |
-| `MYSQL_PASSWORD` | changeme | hyperdesign 用户密码 |
+| `MYSQL_ROOT_PASSWORD` | 无，必填 | MySQL root 强密码；缺失或为空时 Compose 拒绝启动 |
+| `MYSQL_PASSWORD` | 无，必填 | hyperdesign 用户强密码；缺失或为空时 Compose 拒绝启动 |
+| `WEB_BIND_ADDRESS` | 127.0.0.1 | Web 宿主机监听地址；生产环境由反向代理访问 |
 | `WEB_PORT` | 8080 | Web 服务对外端口 |
 | `APP_ORIGIN` | http://localhost:8080 | 前端访问地址 |
 | `SESSION_COOKIE_SECURE` | false | Cookie Secure 标志 |
@@ -380,6 +375,6 @@ docker compose exec -T mysql mysql -u hyperdesign -p hyperdesign < sqlite-export
 
 遇到问题请查看：
 - 项目文档: `HTML prototype/docs/`
-- GitHub Issues: https://github.com/your-org/hyperdesign/issues
+- GitHub Issues: https://github.com/chrisjiang2016/HyperDesign/issues
 - API 日志: `docker compose logs api`
 - MySQL 日志: `docker compose logs mysql`

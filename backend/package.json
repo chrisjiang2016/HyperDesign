@@ -15,6 +15,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
+    "admin:init": "ts-node prisma/init-admin.ts",
     "db:setup": "prisma db push && prisma db seed"
   },
   "dependencies": {

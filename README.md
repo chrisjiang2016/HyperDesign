@@ -8,7 +8,7 @@
 
 | 验证项 | 结果 |
 |---|---:|
-| 后端单元测试 | 4 suites / 28 tests passed |
+| 后端单元测试 | 5 suites / 36 tests passed |
 | MySQL HTTP 集成测试 | 1 suite / 9 tests passed |
 | Playwright E2E | 16 passed / 1 skipped / 0 failed |
 | 后端构建 | passed |
@@ -62,13 +62,25 @@ git clone https://github.com/chrisjiang2016/HyperDesign.git
 cd HyperDesign/infra
 
 cp .env.example .env
-# 编辑 .env，至少修改 MYSQL_ROOT_PASSWORD 和 MYSQL_PASSWORD
+# 编辑 .env，必须设置 MYSQL_ROOT_PASSWORD 和 MYSQL_PASSWORD
 
 docker compose up -d --build
 docker compose ps
 ```
 
-首次启动时，API 容器会自动执行版本化 Prisma migration 和 seed。浏览器访问：
+API 容器启动时会自动执行版本化 Prisma migration，但不会写入演示数据或默认账号。首次生产部署后，显式创建初始管理员：
+
+```bash
+read -rp "Admin username: " ADMIN_USERNAME
+read -rsp "Admin password: " ADMIN_PASSWORD && echo
+export ADMIN_USERNAME ADMIN_PASSWORD
+docker compose exec -e ADMIN_USERNAME -e ADMIN_PASSWORD api node dist-admin/init-admin.js
+unset ADMIN_USERNAME ADMIN_PASSWORD
+```
+
+管理员用户名必须是 5-64 位英文字母或数字。密码必须为 12-128 位英文字母或数字，同时包含大写字母、小写字母和数字，且不能包含用户名。初始化命令不会覆盖已有账号。
+
+浏览器访问：
 
 ```text
 http://localhost:8080
@@ -82,14 +94,20 @@ curl http://localhost:8080/api/health
 
 预期结果中应包含 `"status":"ok"` 和 `"database":"ok"`。
 
-### 演示账号
+### 本地演示数据
 
 | 角色 | 用户名 | 密码 |
 |---|---|---|
 | 管理员 | `admin` | `Demo123456` |
 | 普通成员 | `chrisj` | `Demo123456` |
 
-演示账号仅用于本地开发和验收。当前容器启动命令会执行 seed；正式上线前必须调整 seed 策略，避免容器重启时重新写入演示账号凭据。
+演示账号仅用于本地开发和验收，生产容器不会自动创建。需要本地演示数据时，必须显式执行：
+
+```bash
+docker compose exec api node dist-seed/seed.js
+```
+
+不要在生产环境运行该命令。
 
 ## 数据持久化
 
@@ -176,6 +194,10 @@ cd backend
 npm test
 
 # MySQL HTTP 集成测试，需要指向独立测试库；每次运行会 reset 该库
+# 先通过开发 override 将 MySQL 仅发布到宿主机回环地址
+cd ../infra
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d mysql
+cd ../backend
 TEST_DATABASE_URL="mysql://user:password@localhost:3306/hyperdesign_test" npm run test:integration
 
 # Docker 环境完整 E2E，默认访问 http://127.0.0.1:8080
@@ -202,12 +224,12 @@ npm run test:integration
 
 以下代码或配置修改是正式公网发布的前提：
 
-1. 移除 API 容器启动时自动执行的 Prisma seed。当前 seed 会创建或重置 `admin`、`chrisj` 等演示账号，并使用演示密码。生产镜像只能执行版本化 migration 并启动 API。
-2. 将 seed 改为仅供管理员显式执行的一次性初始化命令；首次部署后创建真实管理员，并禁用或删除所有演示账号。
-3. 生产 Compose 必须强制要求 `MYSQL_ROOT_PASSWORD` 和 `MYSQL_PASSWORD`，缺失时拒绝启动，不得提供弱密码默认值。
-4. 生产 Compose 移除 MySQL 的 `ports` 映射，仅允许 API 通过 Docker 内网访问数据库。
+1. [x] API 容器启动时只执行版本化 Prisma migration，不再自动写入演示 seed。
+2. [x] 提供显式初始管理员命令，强制管理员凭据规则，并拒绝覆盖已有账号。
+3. [x] Compose 强制要求 `MYSQL_ROOT_PASSWORD` 和 `MYSQL_PASSWORD`，缺失或为空时拒绝解析配置。
+4. [x] 默认 Compose 不发布 MySQL 宿主机端口；本地集成测试使用独立开发 override。
 
-这些修改完成前，不要将当前容器镜像直接暴露到公网。
+以上代码收口已完成。正式发布仍必须完成下方的生产运维配置和真实 Linux 部署验收。
 
 ## 生产运维配置
 
@@ -265,7 +287,7 @@ npm run test:integration
 
 当前版本是单机 Docker Compose 部署方案，文件存储使用宿主机持久化目录。Redis Session、MinIO/S3、多实例部署、CI/CD、监控告警和自动备份属于后续工程化迭代，不是当前 MVP 的运行前提。
 
-当前 Dockerfile 会在 API 容器启动时执行 Prisma seed，适合本地开发和验收。正式生产发布前必须按“上线前代码收口”完成自动 seed 移除、显式管理员初始化和演示账号清理。
+当前 Dockerfile 只在 API 启动时执行版本化 migration，不会自动写入 seed。生产管理员通过显式一次性命令创建；演示 seed 仅保留给本地开发和验收环境。
 
 ## 许可证
 
