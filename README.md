@@ -8,7 +8,7 @@
 
 | 验证项 | 结果 |
 |---|---:|
-| 后端单元测试 | 5 suites / 36 tests passed |
+| 后端单元测试 | 6 suites / 39 tests passed |
 | MySQL HTTP 集成测试 | 1 suite / 9 tests passed |
 | Playwright E2E | 16 passed / 1 skipped / 0 failed |
 | 后端构建 | passed |
@@ -158,6 +158,7 @@ HyperDesign/
 | 前端 | React 19、Ant Design 6、Zustand、React Query、Vite |
 | 后端 | NestJS 11、Prisma 6、Express Session |
 | 数据库 | MySQL 8.0+ |
+| Redis | Redis 7（限流计数；故障时限流 fail-open） |
 | 文件存储 | Docker 宿主机持久化目录，后续可适配 MinIO/S3 |
 | 部署 | Docker Compose、Nginx |
 | 测试 | Jest、Supertest、Playwright |
@@ -218,7 +219,7 @@ npm run test:integration
 
 当前版本可以部署到单台 Linux 云服务器，适合内部团队协作、小规模试用或对高可用与高并发没有严格 SLA 要求的生产 MVP。它已经具备 MySQL 持久化、原型文件持久化、容器健康检查、权限控制、ZIP 安全解析和自动化回归验证。
 
-当前版本不应在不做生产收口的情况下，直接作为高并发、多实例或高可用公网系统发布。Redis Session、MinIO/S3、多实例部署、CI/CD、监控告警和自动备份均属于后续工程化能力，而不是当前单机 MVP 的运行前提。
+当前版本不应在不做生产收口的情况下，直接作为高并发、多实例或高可用公网系统发布。Redis 当前仅用于限流计数，Redis Session、MinIO/S3、多实例部署、CI/CD、监控告警和自动备份均属于后续工程化能力，而不是当前单机 MVP 的运行前提。
 
 ## 上线前代码收口
 
@@ -256,7 +257,7 @@ npm run test:integration
 工程化工作应按依赖关系分期推进，避免同时改动会话、文件存储、上传解析和部署拓扑。
 
 1. **生产基础收口**：完成自动 seed 移除、管理员初始化、生产环境变量校验、HTTPS、日志轮转，以及备份恢复演练。
-2. **共享基础设施**：引入 Redis，用于共享 Session、限流计数和任务队列；保持现有存储接口，新增 MinIO/S3 实现，将原型文件迁移到对象存储，数据库仅保存对象 Key。
+2. **共享基础设施**：扩展现有 Redis 接入，用于共享 Session 和任务队列；保持现有存储接口，新增 MinIO/S3 实现，将原型文件迁移到对象存储，数据库仅保存对象 Key。
 3. **异步 ZIP 解析**：引入 BullMQ + Redis。上传接口仅负责校验、保存和入队；独立 Worker 负责解压、扫描、重试、失败记录和页面目录写入。
 4. **安全与可观测性**：增加全局 API 限流，并对登录、上传使用更严格的策略；补充结构化日志、请求 ID、审计查询与保留策略、健康指标、Prometheus 指标、告警规则和基础仪表盘。
 5. **交付与扩展**：建立 GitHub Actions，覆盖构建、单元测试、MySQL 集成测试、Playwright、镜像构建和漏洞扫描；拆分 API 与 Worker 部署，支持多 API 实例，并完善 MySQL、对象存储的灾备与恢复手册。
@@ -285,7 +286,7 @@ npm run test:integration
 
 ## 当前边界
 
-当前版本是单机 Docker Compose 部署方案，文件存储使用宿主机持久化目录。Redis Session、MinIO/S3、多实例部署、CI/CD、监控告警和自动备份属于后续工程化迭代，不是当前 MVP 的运行前提。
+当前版本是单机 Docker Compose 部署方案，文件存储使用宿主机持久化目录。Redis 已接入并用于限流计数，但 Redis Session、MinIO/S3、多实例部署、CI/CD、监控告警和自动备份属于后续工程化迭代，不是当前 MVP 的运行前提。
 
 当前 Dockerfile 只在 API 启动时执行版本化 migration，不会自动写入 seed。生产管理员通过显式一次性命令创建；演示 seed 仅保留给本地开发和验收环境。
 

@@ -1,6 +1,8 @@
-import { Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post, Put, Req, Res } from '@nestjs/common'
+import { Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post, Put, Req, Res, UseGuards } from '@nestjs/common'
 import type { Request, Response } from 'express'
 import { ok } from '../common/api-response'
+import { RateLimit } from '../rate-limit/rate-limit.decorator'
+import { RateLimitGuard } from '../rate-limit/rate-limit.guard'
 import { AuthService } from './auth.service'
 import {
   AddTeamMemberDto,
@@ -31,11 +33,15 @@ export class AuthController {
   ) {}
 
   @Post('auth/register')
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ name: 'register', limit: 10, windowSeconds: 3600 })
   async register(@Body() dto: RegisterDto) {
     return ok(await this.authService.register(dto), '注册成功')
   }
 
   @Post('auth/login')
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ name: 'login', limit: 10, windowSeconds: 300, identityField: 'username' })
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) response: Response) {
     const result = await this.authService.login(dto)
     response.cookie(SESSION_COOKIE, result.token, this.cookieOptions())
@@ -62,12 +68,16 @@ export class AuthController {
   }
 
   @Post('auth/reset-password')
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ name: 'reset-password', limit: 5, windowSeconds: 3600, identityField: 'username' })
   async resetPassword(@Body() dto: ResetPasswordDto) {
     const temporaryPassword = await this.authService.resetPassword(dto.username)
     return ok(temporaryPassword ? { temporaryPassword } : null, '若账号存在，密码已重置')
   }
 
   @Post('auth/change-password')
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ name: 'change-password', limit: 10, windowSeconds: 3600 })
   async changePassword(@Req() request: Request, @Body() dto: ChangePasswordDto) {
     const user = await this.authService.getCurrentUser(request.cookies?.[SESSION_COOKIE])
     await this.authService.changePassword(user.id, dto)

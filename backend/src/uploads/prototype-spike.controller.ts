@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Get, NotFoundException, Param, Post, Query, Req, Res, UploadedFile, UseInterceptors } from '@nestjs/common'
+import { BadRequestException, Controller, Get, NotFoundException, Param, Post, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import type { Request, Response } from 'express'
 import { promises as fs } from 'node:fs'
@@ -9,6 +9,8 @@ import { AuthService } from '../auth/auth.service'
 import { WorkspaceService } from '../auth/current-user.service'
 import { StorageService } from '../storage/storage.service'
 import { ok } from '../common/api-response'
+import { RateLimit } from '../rate-limit/rate-limit.decorator'
+import { RateLimitGuard } from '../rate-limit/rate-limit.guard'
 import { ZipParserService } from './zip-parser.service'
 
 const SESSION_COOKIE = 'hd_sid'
@@ -25,6 +27,8 @@ export class PrototypeSpikeController {
   ) {}
 
   @Post('projects/:projectId/files/upload')
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ name: 'upload', limit: 30, windowSeconds: 3600 })
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_UPLOAD_BYTES } }))
   async uploadToProject(@Req() request: Request, @Param('projectId') projectId: string, @Query('name') name: string | undefined, @Query('folderId') folderId: string | undefined, @UploadedFile() file?: Express.Multer.File) {
     const user = await this.auth.getCurrentUser(request.cookies?.[SESSION_COOKIE])
@@ -34,6 +38,8 @@ export class PrototypeSpikeController {
   }
 
   @Post('files/spike-upload')
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ name: 'upload', limit: 30, windowSeconds: 3600 })
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_UPLOAD_BYTES } }))
   async upload(@Req() request: Request, @UploadedFile() file?: Express.Multer.File) {
     const user = await this.auth.getCurrentUser(request.cookies?.[SESSION_COOKIE])

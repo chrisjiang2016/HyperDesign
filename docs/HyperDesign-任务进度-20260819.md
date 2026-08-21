@@ -1,5 +1,32 @@
 # HyperDesign 开发任务进度记录
 
+## 2026-08-21 - Redis 接入与分布式限流完成
+
+### 完成内容
+
+- [x] 接入 `ioredis`，新增全局 Redis 客户端模块，支持连接重试和优雅关闭。
+- [x] 新增 Redis Lua 原子固定窗口计数器，避免并发请求下 `INCR` 与过期时间设置竞态。
+- [x] 新增可复用 `@RateLimit` 装饰器与 Guard，并为登录接口启用按 IP + 用户名限流。
+- [x] Redis 不可用时限流 fail-open，避免辅助基础设施故障阻断核心认证链路。
+- [x] 健康检查增加 Redis 状态；Redis 故障时返回 `degraded`，MySQL 正常时 API 仍保持可用。
+- [x] Docker Compose 新增 Redis 7、密码校验、健康检查、持久化卷和 API 依赖关系。
+- [x] 配置 `trust proxy`，确保部署在 Web/Nginx 反向代理后时限流能够识别真实客户端 IP。
+
+### 验证结果
+
+```text
+后端构建：passed
+后端单元测试：6 suites / 39 tests passed
+后端 lint：0 errors / 4 existing warnings
+Docker 真实冒烟：MySQL、Redis、API、Web healthy
+健康接口：database=ok，redis=ok
+错误登录限流：前 10 次 401，第 11 次 429
+```
+
+### 当前边界
+
+Redis 当前用于限流计数，不承担 Session、任务队列或对象存储职责。Redis Session、多实例 API、BullMQ 异步解析、MinIO/S3 和监控告警仍属于后续工程化切片。
+
 ## 2026-08-20 - 生产基础收口完成
 
 ### 完成内容
@@ -38,13 +65,15 @@ Prisma OpenSSL warning：已通过镜像安装 OpenSSL 消除
 
 `npm audit --omit=dev --audit-level=high` 报告 3 个 high，来源为 Prisma CLI 的 `@prisma/config` / `deepmerge-ts` 依赖链。自动修复会强制切换 Prisma 版本，因此未混入本次生产收口；需作为独立依赖安全切片评估、升级并完整回归。
 
+评估结论：当前链路为 `prisma@6.19.3 -> @prisma/config@6.19.3 -> deepmerge-ts@7.1.5`。漏洞是 CVE-2026-40345，需要攻击者构造循环对象图并传入 deepmerge API；HyperDesign 业务 HTTP 请求没有直接调用该 API，主要风险位于生产镜像内 Prisma migration/config CLI 的输入面，直接公网可利用性较低但不为零。审计建议降级到 `prisma@6.12.0`，不属于安全补丁升级；当前 Prisma `7.9.1` 仍使用 `deepmerge-ts@7.1.5`，没有已验证的官方无破坏性修复。结论为中风险、非当前 P0 阻塞，禁止执行未经验证的 `npm audit fix --force`；后续单独评估 Prisma 7、CLI/API 镜像分离和依赖 override。
+
 本次隔离生产冒烟使用独立 Compose 项目、MySQL 卷和临时存储目录；验证结束后已全部删除，没有改动原开发数据库和存储。
 
 ### 下一步
 
 1. 独立评估 Prisma CLI 依赖审计风险，选择兼容版本并执行完整回归。
 2. 在 Linux 服务器落实域名、HTTPS、存储目录、日志轮转以及 MySQL/文件备份恢复演练。
-3. 进入下一工程化切片：Redis 与分布式限流基础设施。
+3. Redis 与分布式限流基础设施已于 2026-08-21 完成；后续进入 Redis Session / 异步任务队列与生产运维增强评估。
 
 ## 2026-08-19 - SQLite → MySQL 迁移 + Docker 部署就绪
 
