@@ -39,6 +39,10 @@ Nginx Web :8080
   v
 NestJS API :3001 ---- MySQL 8.0
   |
+  +---- Redis 7
+  |       |
+  |       +---- rate-limit counters
+  |
   +---- /app/storage
           |
           +---- uploads/{fileId}/original.zip
@@ -92,7 +96,7 @@ http://localhost:8080
 curl http://localhost:8080/api/health
 ```
 
-预期结果中应包含 `"status":"ok"` 和 `"database":"ok"`。
+预期结果中应包含 `"status":"ok"`、`"database":"ok"` 和 `"redis":"ok"`。
 
 ### 本地演示数据
 
@@ -259,7 +263,7 @@ npm run test:integration
 1. **生产基础收口**：完成自动 seed 移除、管理员初始化、生产环境变量校验、HTTPS、日志轮转，以及备份恢复演练。
 2. **共享基础设施**：扩展现有 Redis 接入，用于共享 Session 和任务队列；保持现有存储接口，新增 MinIO/S3 实现，将原型文件迁移到对象存储，数据库仅保存对象 Key。
 3. **异步 ZIP 解析**：引入 BullMQ + Redis。上传接口仅负责校验、保存和入队；独立 Worker 负责解压、扫描、重试、失败记录和页面目录写入。
-4. **安全与可观测性**：增加全局 API 限流，并对登录、上传使用更严格的策略；补充结构化日志、请求 ID、审计查询与保留策略、健康指标、Prometheus 指标、告警规则和基础仪表盘。
+4. **安全与可观测性**：将现有认证和上传限流扩展为全局 API 限流，并补充结构化日志、请求 ID、审计查询与保留策略、健康指标、Prometheus 指标、告警规则和基础仪表盘。
 5. **交付与扩展**：建立 GitHub Actions，覆盖构建、单元测试、MySQL 集成测试、Playwright、镜像构建和漏洞扫描；拆分 API 与 Worker 部署，支持多 API 实例，并完善 MySQL、对象存储的灾备与恢复手册。
 6. **平台化评估**：只有在多实例规模、发布频率和运维复杂度明确增长后，再评估 Kubernetes 或其他编排平台。
 
