@@ -1,4 +1,7 @@
 import { BadRequestException } from '@nestjs/common'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { ZipParserService } from './zip-parser.service'
 
 describe('ZipParserService path safety', () => {
@@ -41,5 +44,24 @@ describe('ZipParserService path safety', () => {
       { path: 'assets/', type: 'Directory', uncompressedSize: 0 },
       { path: 'assets/app.js', type: 'File', uncompressedSize: 2_048 },
     ])).not.toThrow()
+  })
+
+  it('scans a standalone HTML source as one entry page', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'hyperdesign-html-'))
+    try {
+      await writeFile(join(directory, 'index.html'), '<!doctype html><title>Single page</title>')
+      await writeFile(join(directory, 'app.js'), 'console.log("ok")')
+      await expect(service.scanExtractedDirectory(directory)).resolves.toEqual([
+        expect.objectContaining({
+          relativePath: 'index.html',
+          directoryPath: null,
+          title: 'Single page',
+          isEntry: true,
+          sortOrder: 0,
+        }),
+      ])
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
   })
 })

@@ -544,7 +544,7 @@ export class WorkspaceService {
     await this.prisma.prototypeFile.delete({ where: { id: fileId } })
     if (file.storageKey) {
       await Promise.allSettled([
-        rm(this.storage.getOriginalZipPath(file.storageKey), { recursive: true, force: true }),
+        rm(this.storage.getUploadDirectory(file.id), { recursive: true, force: true }),
         rm(this.storage.getExtractedPath(file.storageKey), { recursive: true, force: true }),
       ])
     }
@@ -743,14 +743,14 @@ export class WorkspaceService {
   private async deleteProjectAssets(projectId: string) {
     const files = await this.prisma.prototypeFile.findMany({
       where: { projectId },
-      select: { storageKey: true },
+      select: { id: true, storageKey: true },
     })
     await this.prisma.prototypeFile.deleteMany({ where: { projectId } })
     await Promise.allSettled(
       files
         .filter((file) => file.storageKey)
         .flatMap((file) => [
-          rm(this.storage.getOriginalZipPath(file.storageKey), { recursive: true, force: true }),
+          rm(this.storage.getUploadDirectory(file.id), { recursive: true, force: true }),
           rm(this.storage.getExtractedPath(file.storageKey), { recursive: true, force: true }),
         ]),
     )

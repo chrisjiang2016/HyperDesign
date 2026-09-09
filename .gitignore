@@ -56,3 +56,9 @@ playwright-report/
 # Temporary files
 *.tmp
 *.temp
+
+# WorkBuddy project memory and configuration
+.workbuddy/
+
+# OpenClaw historical memory (not version controlled)
+memory/

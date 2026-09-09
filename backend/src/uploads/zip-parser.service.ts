@@ -40,6 +40,11 @@ export class ZipParserService {
     }
 
     await this.flattenSingleRootDirectory(root)
+    return this.scanExtractedDirectory(root)
+  }
+
+  async scanExtractedDirectory(targetDirectory: string): Promise<ParsedHtmlPage[]> {
+    const root = resolve(targetDirectory)
     const htmlFiles = await this.findHtmlFiles(root)
     if (htmlFiles.length === 0) {
       throw new BadRequestException({ errorCode: 'NO_HTML_FOUND', message: 'ZIP 中未识别到 HTML 页面' })

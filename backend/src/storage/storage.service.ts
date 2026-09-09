@@ -9,7 +9,7 @@ import { join, resolve } from 'node:path'
  * 存储结构：
  * - STORAGE_LOCAL_ROOT/
  *   - uploads/{fileId}/
- *     - original.zip
+ *     - original.zip or original.html
  *   - extracted/{fileId}/
  *     - start_with_pages.html
  *     - resources/
@@ -40,14 +40,14 @@ export class StorageService {
     return `uploads/${fileId}`
   }
 
-  /**
-   * 获取原始 ZIP 文件的绝对路径
-   * @param storageKey 存储 Key
-   * @returns ZIP 文件的绝对路径
-   */
+  getOriginalSourcePath(storageKey: string, extension: string): string {
+    const safeExtension = extension.toLowerCase() === '.zip' ? '.zip' : '.html'
+    return join(this.storageRoot, storageKey, `original${safeExtension}`)
+  }
+
+  /** Kept for ZIP callers while the storage contract is migrated to sources. */
   getOriginalZipPath(storageKey: string): string {
-    // storageKey 格式: uploads/{fileId}
-    return join(this.storageRoot, storageKey, 'original.zip')
+    return this.getOriginalSourcePath(storageKey, '.zip')
   }
 
   /**

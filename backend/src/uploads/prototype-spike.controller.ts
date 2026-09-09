@@ -34,7 +34,7 @@ export class PrototypeSpikeController {
     const user = await this.auth.getCurrentUser(request.cookies?.[SESSION_COOKIE])
     await this.workspaceService.requireProjectUpload(user.id, projectId)
     if (folderId) await this.workspaceService.requireProjectFolder(user.id, projectId, folderId)
-    return this.persistUploadedZip(user.id, file, projectId, name, folderId)
+    return this.persistUploadedFile(user.id, file, projectId, name, folderId)
   }
 
   @Post('files/spike-upload')
@@ -43,7 +43,7 @@ export class PrototypeSpikeController {
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_UPLOAD_BYTES } }))
   async upload(@Req() request: Request, @UploadedFile() file?: Express.Multer.File) {
     const user = await this.auth.getCurrentUser(request.cookies?.[SESSION_COOKIE])
-    return this.persistUploadedZip(user.id, file)
+    return this.persistUploadedFile(user.id, file)
   }
 
   @Post('projects/:projectId/files/:fileId/retry-parse')
@@ -51,30 +51,34 @@ export class PrototypeSpikeController {
     const user = await this.auth.getCurrentUser(request.cookies?.[SESSION_COOKIE])
     const file = await this.workspaceService.requireProjectFileEdit(user.id, projectId, fileId)
     if (file.parseStatus === 'PARSING') throw new BadRequestException({ errorCode: 'PARSING_IN_PROGRESS', message: '文件正在解析中，请稍后再试' })
-    if (!file.storageKey) throw new BadRequestException({ errorCode: 'SOURCE_MISSING', message: '未找到可用于重新解析的 ZIP 源文件' })
-    const originalZipPath = this.storage.getOriginalZipPath(file.storageKey)
-    try { await fs.access(originalZipPath) } catch { throw new BadRequestException({ errorCode: 'SOURCE_MISSING', message: '原始 ZIP 文件已不存在，无法重新解析' }) }
+    if (!file.storageKey) throw new BadRequestException({ errorCode: 'SOURCE_MISSING', message: '未找到可用于重新解析的源文件' })
+    const sourceExtension = this.getUploadExtension(file.originalFilename)
+    const originalSourcePath = this.storage.getOriginalSourcePath(file.storageKey, sourceExtension)
+    try { await fs.access(originalSourcePath) } catch { throw new BadRequestException({ errorCode: 'SOURCE_MISSING', message: '原始文件已不存在，无法重新解析' }) }
     await this.prisma.$transaction([
       this.prisma.prototypePage.deleteMany({ where: { fileId } }),
       this.prisma.prototypeFile.update({ where: { id: fileId }, data: { parseStatus: 'PARSING', parseError: null, pageCount: 0, entryPageId: null } }),
     ])
     const extractDirectory = this.storage.getExtractedPath(file.storageKey)
     await fs.rm(extractDirectory, { recursive: true, force: true })
-    setImmediate(() => void this.parseZipRecord(fileId, originalZipPath, extractDirectory))
+    setImmediate(() => void this.parseSourceRecord(fileId, originalSourcePath, extractDirectory, sourceExtension))
     return ok({ id: fileId, parseStatus: 'parsing' }, '已开始重新解析')
   }
 
-  private async persistUploadedZip(userId: string, file?: Express.Multer.File, projectId?: string, displayName?: string, folderId?: string) {
-    if (!file) throw new BadRequestException({ errorCode: 'VALIDATION_ERROR', message: '请选择 ZIP 文件' })
-    if (extname(file.originalname).toLowerCase() !== '.zip' || !this.isZip(file.buffer)) {
-      throw new BadRequestException({ errorCode: 'INVALID_FILE_TYPE', message: '仅支持有效的 ZIP 文件' })
+  private async persistUploadedFile(userId: string, file?: Express.Multer.File, projectId?: string, displayName?: string, folderId?: string) {
+    if (!file) throw new BadRequestException({ errorCode: 'VALIDATION_ERROR', message: '请选择 HTML 或 ZIP 文件' })
+    const extension = this.getUploadExtension(file.originalname)
+    const isZip = extension === '.zip'
+    const isHtml = extension === '.html' || extension === '.htm'
+    if ((!isZip && !isHtml) || (isZip && !this.isZip(file.buffer))) {
+      throw new BadRequestException({ errorCode: 'INVALID_FILE_TYPE', message: '仅支持 HTML、HTM 或有效的 ZIP 文件' })
     }
 
     const record = await this.prisma.prototypeFile.create({
       data: {
         projectId,
         folderId,
-        name: displayName?.trim() || this.decodeUploadFilename(file.originalname).replace(/\.zip$/i, ''),
+        name: displayName?.trim() || this.decodeUploadFilename(file.originalname).replace(/\.(zip|html?)$/i, ''),
         originalFilename: this.decodeUploadFilename(file.originalname),
         storageKey: '',
         fileSize: file.size,
@@ -94,25 +98,33 @@ export class PrototypeSpikeController {
     const storageKey = this.storage.generateStorageKey(record.id)
     const uploadDirectory = this.storage.getUploadDirectory(record.id)
     const extractDirectory = this.storage.getExtractDirectory(record.id)
-    const zipPath = this.storage.getOriginalZipPath(storageKey)
+    const sourcePath = this.storage.getOriginalSourcePath(storageKey, extension)
 
     try {
       await fs.mkdir(uploadDirectory, { recursive: true })
-      await fs.writeFile(zipPath, file.buffer)
+      await fs.writeFile(sourcePath, file.buffer)
       await this.prisma.prototypeFile.update({ where: { id: record.id }, data: { storageKey } })
       // Local development worker: parsing is deliberately detached from the request.
       // The production Storage/Job adapter can replace this with BullMQ without changing the API contract.
-      setImmediate(() => void this.parseZipRecord(record.id, zipPath, extractDirectory))
-      return ok({ id: record.id, projectId, parseStatus: 'parsing', pageCount: 0, entryPageId: null }, 'ZIP 已接收，正在解析')
+      setImmediate(() => void this.parseSourceRecord(record.id, sourcePath, extractDirectory, extension))
+      return ok({ id: record.id, projectId, parseStatus: 'parsing', pageCount: 0, entryPageId: null }, `${isHtml ? 'HTML' : 'ZIP'} 已接收，正在解析`)
     } catch (error) {
       await this.prisma.prototypeFile.update({ where: { id: record.id }, data: { parseStatus: 'FAILED', parseError: error instanceof Error ? error.message : 'ZIP 保存失败' } })
       throw error
     }
   }
 
-  private async parseZipRecord(fileId: string, zipPath: string, extractDirectory: string) {
+  private async parseSourceRecord(fileId: string, sourcePath: string, extractDirectory: string, extension: string) {
     try {
-      const pages = await this.parser.extractAndScan(zipPath, extractDirectory)
+      let pages
+      if (extension === '.zip') {
+        pages = await this.parser.extractAndScan(sourcePath, extractDirectory)
+      } else {
+        await fs.rm(extractDirectory, { recursive: true, force: true })
+        await fs.mkdir(extractDirectory, { recursive: true })
+        await fs.copyFile(sourcePath, join(extractDirectory, 'index.html'))
+        pages = await this.parser.scanExtractedDirectory(extractDirectory)
+      }
       const entryPage = pages.find((page) => page.isEntry)
       const pageRecords = await this.prisma.$transaction(async (tx) => {
         await tx.prototypePage.createMany({ data: pages.map((page) => ({ ...page, fileId })) })
@@ -182,6 +194,12 @@ export class PrototypeSpikeController {
 
   private isZip(buffer: Buffer) {
     return buffer.length >= 4 && buffer.subarray(0, 4).equals(Buffer.from([0x50, 0x4b, 0x03, 0x04]))
+  }
+
+  private getUploadExtension(filename: string): string {
+    const extension = extname(this.decodeUploadFilename(filename)).toLowerCase()
+    if (extension === '.htm' || extension === '.html' || extension === '.zip') return extension
+    throw new BadRequestException({ errorCode: 'INVALID_FILE_TYPE', message: '仅支持 HTML、HTM 或 ZIP 文件' })
   }
 
   private decodeUploadFilename(filename: string): string {
