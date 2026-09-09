@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert, Button, Checkbox, Form, Input, Modal, Table, Upload, message } from 'antd'
-import { DeleteOutlined, EyeOutlined, FileZipOutlined, FolderAddOutlined, InboxOutlined, LockOutlined, SearchOutlined, ShareAltOutlined, UploadOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, EyeOutlined, FileZipOutlined, FolderAddOutlined, InboxOutlined, LockOutlined, SearchOutlined, ShareAltOutlined, UploadOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import { useNavigate, useParams } from 'react-router-dom'
-import { createProjectFolder, deleteProject, deleteProjectFile, getProjectDetail, getProjectDirectory, getProjectFilePermissions, getProjectFiles, retryProjectFileParse, updateProjectFilePermission, uploadProjectFile, type FilePermissionMember, type ProjectDetail, type ProjectFile, type ProjectFolder } from '@/api/workspace'
+import { createProjectFolder, deleteProject, deleteProjectFile, getProjectDetail, getProjectDirectory, getProjectFilePermissions, getProjectFiles, retryProjectFileParse, updateProject, updateProjectFilePermission, uploadProjectFile, type FilePermissionMember, type ProjectDetail, type ProjectFile, type ProjectFolder } from '@/api/workspace'
 import { AppShellLayout } from '@/layouts/AppLayouts'
 import { RightPanel } from '@/components/workspace/RightPanel'
 import { PageEmpty, PageError, PageLoading } from '@/components/common/pagestates'
@@ -11,8 +11,9 @@ import { useWorkspaceStore } from '@/store/workspaceStore'
 
 type UploadFormValues = { displayName?: string }
 type FolderFormValues = { name: string }
+type ProjectEditValues = { name: string }
 type PermissionFlags = { canView: boolean; canComment: boolean; canEdit: boolean; canDelete: boolean }
-const activities = [{ id: 'project-api', title: '项目文件已接入真实数据', summary: '上传 ZIP 后系统会后台解析页面目录，并自动刷新状态。' }]
+const activities = [{ id: 'project-api', title: '项目文件已接入真实数据', summary: '上传 HTML 或 ZIP 后系统会后台解析页面目录，并自动刷新状态。' }]
 const formatDate = (value: string) => new Date(value).toLocaleString('zh-CN', { hour12: false })
 
 export function ProjectDetailPage() {
@@ -25,7 +26,9 @@ export function ProjectDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [keyword, setKeyword] = useState('')
   const [uploadOpen, setUploadOpen] = useState(false)
+  const [projectEditOpen, setProjectEditOpen] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [updatingProject, setUpdatingProject] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [selectedFolderId, setSelectedFolderId] = useState<string | undefined>()
   const [folderOpen, setFolderOpen] = useState(false)
@@ -38,6 +41,7 @@ export function ProjectDetailPage() {
   const [savingPermissionUserId, setSavingPermissionUserId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [form] = Form.useForm<UploadFormValues>()
+  const [projectEditForm] = Form.useForm<ProjectEditValues>()
   const [folderForm] = Form.useForm<FolderFormValues>()
   const fetchNavTeams = useWorkspaceStore((state) => state.fetchNavTeams)
 
@@ -67,15 +71,37 @@ export function ProjectDetailPage() {
   const filteredFiles = useMemo(() => files.filter((file) => file.name.includes(keyword) || file.originalFilename.includes(keyword)), [files, keyword])
 
   const handleUpload = async () => {
-    if (!selectedFile) { message.warning('请选择 ZIP 文件'); return }
+    if (!selectedFile) { message.warning('请选择 HTML 或 ZIP 文件'); return }
     const values = await form.validateFields()
     setUploading(true)
     try {
       await uploadProjectFile(projectId, selectedFile, values.displayName, selectedFolderId)
       await loadProject(false)
       setUploadOpen(false); setSelectedFile(null); setSelectedFolderId(undefined); form.resetFields()
-      message.success('ZIP 已上传，正在后台解析页面目录')
+      message.success('文件已上传，正在后台解析页面目录')
     } finally { setUploading(false) }
+  }
+
+  const openProjectEdit = () => {
+    if (!project || project.permission !== 'edit') return
+    projectEditForm.setFieldsValue({ name: project.name })
+    setProjectEditOpen(true)
+  }
+
+  const handleUpdateProject = async () => {
+    if (!project) return
+    const values = await projectEditForm.validateFields()
+    const name = values.name.trim()
+    if (!name) return
+    setUpdatingProject(true)
+    try {
+      await updateProject(project.id, { name })
+      await Promise.all([loadProject(false), fetchNavTeams()])
+      setProjectEditOpen(false)
+      message.success('项目名称已更新')
+    } finally {
+      setUpdatingProject(false)
+    }
   }
 
   const handleCreateFolder = async () => {
@@ -169,11 +195,18 @@ export function ProjectDetailPage() {
       {error ? <PageError title="项目详情加载失败" description={error} action={{ label: '重新加载', onClick: () => void loadProject() }} /> : null}
       {loading ? <PageLoading label="正在加载项目与原型资产" /> : null}
       {project ? <>
-        <section className="hd-hero-panel hd-project-hero"><div className="hd-project-header-row"><div><div className="hd-project-kicker">项目工作台</div><h1>{project.name}</h1><p>{project.description}</p></div><div className="hd-hero-actions"><Button className="hd-btn-secondary" disabled title="分享链接按原型文件创建，请在对应文件的操作栏中管理"><ShareAltOutlined /> 分享原型</Button><Button type="primary" className="hd-btn-primary" disabled={project.permission !== 'edit'} title={project.permission === 'edit' ? '上传 HTML 或 Axure 导出的 ZIP 原型文件' : '当前账号只有查看权限，无法上传文件'} onClick={() => { setSelectedFolderId(undefined); setUploadOpen(true) }}><UploadOutlined /> {project.permission === 'edit' ? '上传 ZIP' : '仅查看权限'}</Button>{project.canDelete ? <Button danger loading={deleting} onClick={handleDeleteProject}><DeleteOutlined /> 删除项目</Button> : null}</div></div>{project.permission !== 'edit' ? <Alert className="hd-project-permission-note" type="info" showIcon message="当前账号仅拥有查看权限，不能上传、创建文件夹或修改文件权限。请使用项目编辑者账号登录。" /> : null}<div className="hd-team-meta-row"><span className="hd-meta-pill"><FileZipOutlined /> {project.stats.fileCount} 个原型文件</span><span className="hd-meta-pill">{project.stats.collaboratorCount} 位协作者</span><span className="hd-meta-pill">{project.stats.pendingCommentCount} 条待处理评论</span><span className="hd-meta-pill">{project.stats.pageCountEstimate} 个页面</span></div></section>
-        <section className="hd-section-panel"><div className="hd-page-toolbar"><div><h2>原型资产</h2><p>文件来自当前项目的真实 ZIP 解析结果，可直接进入在线预览。</p></div><div className="hd-toolbar-actions"><Button className="hd-btn-secondary" disabled={project.permission !== 'edit'} onClick={() => setFolderOpen(true)}><FolderAddOutlined /> 新建文件夹</Button><Button className="hd-btn-secondary" disabled={project.permission !== 'edit'} onClick={() => { setSelectedFolderId(undefined); setUploadOpen(true) }}><UploadOutlined /> 上传 HTML 原型 ZIP</Button></div></div><div className="hd-asset-toolbar"><label className="hd-search-box"><SearchOutlined aria-hidden="true" /><Input variant="borderless" placeholder="搜索文件名" value={keyword} onChange={(e) => setKeyword(e.target.value)} allowClear /></label>{hasParsingFiles ? <span className="hd-parse-polling">正在自动刷新解析进度…</span> : null}</div>{folders.map((folder) => <div key={folder.id} className="hd-folder-block"><div className="hd-folder-heading"><FolderAddOutlined /> {folder.name} <span>{folder.files.length} 个文件</span><Button size="small" disabled={project.permission !== 'edit'} onClick={() => { setSelectedFolderId(folder.id); setUploadOpen(true) }}><UploadOutlined /> 上传到此处</Button></div><div className="hd-asset-list">{folder.files.filter((file) => filteredFiles.some((current) => current.id === file.id)).map(renderFileRow)}</div></div>)}<div className="hd-asset-list">{filteredFiles.filter((file) => !file.folderId).map(renderFileRow)}{filteredFiles.length === 0 ? <PageEmpty variant="files" title={keyword ? '没有匹配的原型文件' : '当前项目还没有原型文件'} description={keyword ? '请调整搜索关键词后重试。' : '上传 HTML 或 Axure 导出的 ZIP 后，系统会自动生成页面目录与受控预览。'} action={!keyword && project.permission === 'edit' ? { label: '上传 ZIP', onClick: () => { setSelectedFolderId(undefined); setUploadOpen(true) } } : undefined} /> : null}</div><button type="button" className="hd-dropzone" disabled={project.permission !== 'edit'} onClick={() => { setSelectedFolderId(undefined); setUploadOpen(true) }}><div className="hd-dropzone__emoji"><InboxOutlined /></div><h3>上传 ZIP 原型文件</h3><p>系统会自动校验、解析页面目录并生成受控在线预览。</p></button></section>
+        <section className="hd-hero-panel hd-project-hero"><div className="hd-project-header-row"><div><div className="hd-project-kicker">项目工作台</div><h1>{project.name}</h1><p>{project.description}</p></div><div className="hd-hero-actions"><Button className="hd-btn-secondary" disabled title="分享链接按原型文件创建，请在对应文件的操作栏中管理"><ShareAltOutlined /> 分享原型</Button>{project.permission === 'edit' ? <Button className="hd-btn-secondary" onClick={openProjectEdit}><EditOutlined /> 编辑名称</Button> : null}<Button type="primary" className="hd-btn-primary" disabled={project.permission !== 'edit'} title={project.permission === 'edit' ? '上传 HTML 或 Axure 导出的 ZIP 原型文件' : '当前账号只有查看权限，无法上传文件'} onClick={() => { setSelectedFolderId(undefined); setUploadOpen(true) }}><UploadOutlined /> {project.permission === 'edit' ? '上传原型' : '仅查看权限'}</Button>{project.canDelete ? <Button danger loading={deleting} onClick={handleDeleteProject}><DeleteOutlined /> 删除项目</Button> : null}</div></div>{project.permission !== 'edit' ? <Alert className="hd-project-permission-note" type="info" showIcon message="当前账号仅拥有查看权限，不能上传、创建文件夹或修改文件权限。请使用项目编辑者账号登录。" /> : null}<div className="hd-team-meta-row"><span className="hd-meta-pill"><FileZipOutlined /> {project.stats.fileCount} 个原型文件</span><span className="hd-meta-pill">{project.stats.collaboratorCount} 位协作者</span><span className="hd-meta-pill">{project.stats.pendingCommentCount} 条待处理评论</span><span className="hd-meta-pill">{project.stats.pageCountEstimate} 个页面</span></div></section>
+        <section className="hd-section-panel"><div className="hd-page-toolbar"><div><h2>原型资产</h2><p>支持单个 HTML 页面和 Axure/HTML 导出的 ZIP，可直接进入在线预览。</p></div><div className="hd-toolbar-actions"><Button className="hd-btn-secondary" disabled={project.permission !== 'edit'} onClick={() => setFolderOpen(true)}><FolderAddOutlined /> 新建文件夹</Button><Button className="hd-btn-secondary" disabled={project.permission !== 'edit'} onClick={() => { setSelectedFolderId(undefined); setUploadOpen(true) }}><UploadOutlined /> 上传 HTML 或 ZIP 原型</Button></div></div><div className="hd-asset-toolbar"><label className="hd-search-box"><SearchOutlined aria-hidden="true" /><Input variant="borderless" placeholder="搜索文件名" value={keyword} onChange={(e) => setKeyword(e.target.value)} allowClear /></label>{hasParsingFiles ? <span className="hd-parse-polling">正在自动刷新解析进度…</span> : null}</div>{folders.map((folder) => <div key={folder.id} className="hd-folder-block"><div className="hd-folder-heading"><FolderAddOutlined /> {folder.name} <span>{folder.files.length} 个文件</span><Button size="small" disabled={project.permission !== 'edit'} onClick={() => { setSelectedFolderId(folder.id); setUploadOpen(true) }}><UploadOutlined /> 上传到此处</Button></div><div className="hd-asset-list">{folder.files.filter((file) => filteredFiles.some((current) => current.id === file.id)).map(renderFileRow)}</div></div>)}<div className="hd-asset-list">{filteredFiles.filter((file) => !file.folderId).map(renderFileRow)}{filteredFiles.length === 0 ? <PageEmpty variant="files" title={keyword ? '没有匹配的原型文件' : '当前项目还没有原型文件'} description={keyword ? '请调整搜索关键词后重试。' : '上传 HTML 或 Axure 导出的 ZIP 后，系统会自动生成页面目录与受控预览。'} action={!keyword && project.permission === 'edit' ? { label: '上传 ZIP', onClick: () => { setSelectedFolderId(undefined); setUploadOpen(true) } } : undefined} /> : null}</div><button type="button" className="hd-dropzone" disabled={project.permission !== 'edit'} onClick={() => { setSelectedFolderId(undefined); setUploadOpen(true) }}><div className="hd-dropzone__emoji"><InboxOutlined /></div><h3>上传 HTML 或 ZIP 原型文件</h3><p>系统会自动校验、解析页面目录并生成受控在线预览。</p></button></section>
       </> : null}
     </div>
-    <Modal centered title="上传原型 ZIP" open={uploadOpen} onCancel={() => setUploadOpen(false)} onOk={handleUpload} okText="上传并解析" cancelText="取消" okButtonProps={{ className: 'hd-btn-primary', loading: uploading }}><Form form={form} layout="vertical" requiredMark={false}>{selectedFolderId ? <div className="hd-upload-folder-hint">上传位置：已选文件夹</div> : null}<Form.Item label="显示名称" name="displayName"><Input placeholder="留空则使用 ZIP 文件名" /></Form.Item><Form.Item label="选择 ZIP 文件" required><Upload accept=".zip,application/zip" maxCount={1} beforeUpload={(file) => { setSelectedFile(file); return false }} onRemove={() => { setSelectedFile(null); return true }} fileList={selectedFile ? [{ uid: selectedFile.name, name: selectedFile.name, status: 'done' } as UploadFile] : []}><Button>选择 ZIP 文件</Button></Upload></Form.Item></Form></Modal>
+    <Modal centered title="上传 HTML 或 ZIP 原型" open={uploadOpen} onCancel={() => setUploadOpen(false)} onOk={handleUpload} okText="上传并解析" cancelText="取消" okButtonProps={{ className: 'hd-btn-primary', loading: uploading }}><Form form={form} layout="vertical" requiredMark={false}>{selectedFolderId ? <div className="hd-upload-folder-hint">上传位置：已选文件夹</div> : null}<Form.Item label="显示名称" name="displayName"><Input placeholder="留空则使用 ZIP 文件名" /></Form.Item><Form.Item label="选择 HTML 或 ZIP 文件" required><Upload accept=".html,.htm,.zip,text/html,application/zip" maxCount={1} beforeUpload={(file) => { setSelectedFile(file); return false }} onRemove={() => { setSelectedFile(null); return true }} fileList={selectedFile ? [{ uid: selectedFile.name, name: selectedFile.name, status: 'done' } as UploadFile] : []}><Button>选择 HTML 或 ZIP 文件</Button></Upload></Form.Item></Form></Modal>
+    <Modal centered title="编辑项目名称" open={projectEditOpen} onCancel={() => setProjectEditOpen(false)} onOk={handleUpdateProject} okText="保存" cancelText="取消" okButtonProps={{ className: 'hd-btn-primary', loading: updatingProject }}>
+      <Form form={projectEditForm} layout="vertical" requiredMark={false}>
+        <Form.Item label="项目名称" name="name" rules={[{ required: true, whitespace: true, message: '请输入项目名称' }]}>
+          <Input maxLength={80} showCount placeholder="请输入项目名称" />
+        </Form.Item>
+      </Form>
+    </Modal>
     <Modal centered title="新建文件夹" open={folderOpen} onCancel={() => setFolderOpen(false)} onOk={handleCreateFolder} okText="创建" cancelText="取消" okButtonProps={{ className: 'hd-btn-primary', loading: creatingFolder }}><Form form={folderForm} layout="vertical" requiredMark={false}><Form.Item label="文件夹名称" name="name" rules={[{ required: true, message: '请输入文件夹名称' }]}><Input placeholder="例如：移动端设计" /></Form.Item></Form></Modal>
     <Modal centered width={760} title={`文件权限 · ${permissionFile?.name ?? ''}`} open={Boolean(permissionFile)} onCancel={() => setPermissionFile(null)} footer={<Button onClick={() => setPermissionFile(null)}>关闭</Button>}>
       <p>仅团队管理员或拥有项目编辑权限的成员可调整。关闭“查看”会自动移除该成员的评论、编辑和删除能力。</p>

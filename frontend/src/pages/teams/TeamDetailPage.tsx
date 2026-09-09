@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Button, Form, Input, Modal, message } from 'antd'
-import { DeleteOutlined, PlusOutlined, SearchOutlined, UserAddOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined, UserAddOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
-import { createProject, deleteTeam, getTeamDetail, type TeamDetail } from '@/api/workspace'
+import { createProject, deleteTeam, getTeamDetail, updateTeam, type TeamDetail } from '@/api/workspace'
 import { AppShellLayout } from '@/layouts/AppLayouts'
 import { RightPanel } from '@/components/workspace/RightPanel'
 import { PageEmpty, PageError, PageLoading } from '@/components/common/pagestates'
@@ -10,6 +10,7 @@ import { useWorkspaceStore } from '@/store/workspaceStore'
 
 type ContentTab = 'projects' | 'members'
 type NewProjectValues = { name: string; description?: string }
+type TeamEditValues = { name: string }
 
 const teamActivities = [
   { id: 'team-api', title: '团队协作已接入真实数据', summary: '项目、成员与文件统计均由 HyperDesign API 返回。' },
@@ -24,9 +25,12 @@ export function TeamDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [projectOpen, setProjectOpen] = useState(false)
+  const [teamEditOpen, setTeamEditOpen] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [updatingTeam, setUpdatingTeam] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [form] = Form.useForm<NewProjectValues>()
+  const [teamEditForm] = Form.useForm<TeamEditValues>()
   const fetchNavTeams = useWorkspaceStore((state) => state.fetchNavTeams)
 
   const loadTeam = async () => {
@@ -68,6 +72,28 @@ export function TeamDetailPage() {
       navigate(`/projects/${project.id}`)
     } finally {
       setCreating(false)
+    }
+  }
+
+  const openTeamEdit = () => {
+    if (!team || team.roleLabel !== '管理员') return
+    teamEditForm.setFieldsValue({ name: team.name })
+    setTeamEditOpen(true)
+  }
+
+  const handleUpdateTeam = async () => {
+    if (!team) return
+    const values = await teamEditForm.validateFields()
+    const name = values.name.trim()
+    if (!name) return
+    setUpdatingTeam(true)
+    try {
+      await updateTeam(team.id, { name })
+      await Promise.all([loadTeam(), fetchNavTeams()])
+      setTeamEditOpen(false)
+      message.success('团队名称已更新')
+    } finally {
+      setUpdatingTeam(false)
     }
   }
 
@@ -113,6 +139,7 @@ export function TeamDetailPage() {
               <span className="hd-status-pill is-success">{team.projectCount} 个项目</span>
             </div>
             <div className="hd-hero-actions">
+              {team.roleLabel === '管理员' ? <Button className="hd-btn-secondary" onClick={openTeamEdit}><EditOutlined /> 编辑名称</Button> : null}
               <Button type="primary" className="hd-btn-primary" disabled={team.roleLabel !== '管理员'} onClick={() => setProjectOpen(true)}><PlusOutlined /> 新建项目</Button>
               <Button className="hd-btn-secondary" disabled title="成员邀请将在协作权限完善后开放"><UserAddOutlined /> 邀请成员</Button>
               {team.roleLabel === '管理员' ? <Button danger loading={deleting} onClick={handleDeleteTeam}><DeleteOutlined /> 删除团队</Button> : null}
@@ -149,6 +176,13 @@ export function TeamDetailPage() {
       </div>
       <Modal centered title="新建项目" open={projectOpen} onCancel={() => setProjectOpen(false)} onOk={handleCreateProject} okText="创建" cancelText="取消" okButtonProps={{ className: 'hd-btn-primary', loading: creating }}>
         <Form form={form} layout="vertical" requiredMark={false}><Form.Item label="项目名称" name="name" rules={[{ required: true, message: '请输入项目名称' }]}><Input placeholder="例如：会员中心改版" /></Form.Item><Form.Item label="项目描述" name="description"><Input.TextArea rows={3} placeholder="可选，简述协作目标" /></Form.Item></Form>
+      </Modal>
+      <Modal centered title="编辑团队名称" open={teamEditOpen} onCancel={() => setTeamEditOpen(false)} onOk={handleUpdateTeam} okText="保存" cancelText="取消" okButtonProps={{ className: 'hd-btn-primary', loading: updatingTeam }}>
+        <Form form={teamEditForm} layout="vertical" requiredMark={false}>
+          <Form.Item label="团队名称" name="name" rules={[{ required: true, whitespace: true, message: '请输入团队名称' }]}>
+            <Input maxLength={80} showCount placeholder="请输入团队名称" />
+          </Form.Item>
+        </Form>
       </Modal>
     </AppShellLayout>
   )

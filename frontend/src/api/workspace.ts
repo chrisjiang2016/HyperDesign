@@ -191,6 +191,10 @@ export async function getTeamDetail(teamId: string) {
   return (await http.get<ApiResponse<TeamDetail>>(`/teams/${teamId}`)).data.data
 }
 
+export async function updateTeam(teamId: string, payload: { name?: string; description?: string }) {
+  return (await http.put<ApiResponse<TeamDetail>>(`/teams/${teamId}`, payload)).data.data
+}
+
 export async function deleteTeam(teamId: string) {
   return (await http.delete<ApiResponse<null>>(`/teams/${teamId}`)).data.data
 }
@@ -201,6 +205,10 @@ export async function createProject(teamId: string, payload: { name: string; des
 
 export async function getProjectDetail(projectId: string) {
   return (await http.get<ApiResponse<ProjectDetail>>(`/projects/${projectId}`)).data.data
+}
+
+export async function updateProject(projectId: string, payload: { name?: string; description?: string }) {
+  return (await http.put<ApiResponse<ProjectDetail>>(`/projects/${projectId}`, payload)).data.data
 }
 
 export async function deleteProject(projectId: string) {
