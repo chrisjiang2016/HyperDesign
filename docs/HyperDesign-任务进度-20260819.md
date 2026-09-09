@@ -1,5 +1,30 @@
 # HyperDesign 开发任务进度记录
 
+## 2026-08-24 - HTML 单文件上传与解析闭环完成
+
+### 完成内容
+
+- [x] 上传接口从仅支持 ZIP 扩展为支持 `.html`、`.htm` 和有效 `.zip`。
+- [x] 单个 HTML/HTM 文件保存到独立原始源文件目录，并复用 `PrototypeFile` 解析状态、权限、评论、分享和预览链路。
+- [x] 单 HTML 文件解析时复制为解析目录下的 `index.html`，生成 1 条入口页面目录记录并提取 `<title>`。
+- [x] ZIP 上传仍沿用原有条目数量、单文件大小、总解压大小和路径穿越防护。
+- [x] 重试解析同时支持 HTML/HTM 和 ZIP 源文件。
+- [x] 删除单文件、项目时改为清理整个原始上传目录，避免 HTML 源文件残留。
+- [x] 前端上传控件、提示文案和文件筛选器已同步支持 HTML/HTM/ZIP。
+
+### 验证结果
+
+```text
+后端 npm run build：passed
+后端 npm test：6 suites / 40 tests passed
+前端 npm run build：passed（保留既有 chunk size warning）
+新增单 HTML 目录扫描测试：passed
+```
+
+### 当前边界
+
+单个 HTML 文件只保证 HTML 本体可预览；若页面依赖 CSS、JavaScript、图片或多个 HTML 页面，应将完整目录打包为 ZIP 后上传。真实 Docker 环境中的 HTML 上传 HTTP E2E 尚未执行，下一步需要在 `http://localhost:8080` 上完成登录、上传、解析状态和 Viewer 访问验证。
+
 ## 2026-08-21 - Redis 接入与分布式限流完成
 
 ### 完成内容
