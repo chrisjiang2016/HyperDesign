@@ -1,42 +1,34 @@
 #!/bin/bash
 set -e
 
+# 项目在服务器上的实际根目录（git 仓库 + infra/docker-compose.yml 所在处）
+# 注意：不是 /opt/hyperdesign —— 那里只放持久化数据（data/），没有 compose 文件
+PROJECT_ROOT="/root/HyperDesign"
+
 echo "=== HyperDesign 前端更新部署脚本 ==="
 echo "开始时间: $(date)"
 
-# 1. 停止 web 容器
-echo "步骤 1/6: 停止 web 容器..."
-cd /opt/hyperdesign
-docker compose stop web
-
-# 2. 备份当前前端文件
-echo "步骤 2/6: 备份当前前端..."
-BACKUP_DIR="/opt/hyperdesign/backups/web-$(date +%Y%m%d-%H%M%S)"
-mkdir -p "$BACKUP_DIR"
-docker compose cp web:/app "$BACKUP_DIR/" || echo "备份失败（容器未运行），继续..."
-
-# 3. 从 GitHub 拉取最新代码
-echo "步骤 3/6: 从 GitHub 拉取最新代码..."
-cd /root/HyperDesign
+# 1. 从 GitHub 拉取最新代码
+echo "步骤 1/4: 从 GitHub 拉取最新代码..."
+cd "$PROJECT_ROOT"
 git fetch origin
 git checkout origin/main -- frontend/
 
-# 4. 重新构建前端
-echo "步骤 4/6: 重新构建前端..."
-cd frontend
-npm install
-npm run build
-
-# 5. 复制到容器中（或重新构建镜像）
-echo "步骤 5/6: 更新前端文件..."
-cd /opt/hyperdesign
+# 2. 重新构建 web 镜像
+# frontend/Dockerfile 的 build 阶段会在镜像内自动执行 npm ci && npm run build，
+# 因此宿主机不需要单独 npm install / npm run build。
+echo "步骤 2/4: 重新构建 web 镜像..."
+cd "$PROJECT_ROOT/infra"
 docker compose build web
-docker compose up -d web
 
-# 6. 验证部署
-echo "步骤 6/6: 验证部署..."
+# 3. 重启 web 容器
+echo "步骤 3/4: 重启 web 容器..."
+docker compose up -d web
 sleep 5
 docker compose ps
+
+# 4. 验证部署
+echo "步骤 4/4: 验证部署..."
 echo ""
 echo "测试前端页面..."
 curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" http://localhost:8080/ || echo "警告：前端访问失败"

@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+# 本脚本必须在服务器上的项目根目录运行，即 /root/HyperDesign
+# （git 仓库 + infra/docker-compose.yml 所在处；不是 /opt/hyperdesign，那里只放持久化数据）
+PROJECT_ROOT="/root/HyperDesign"
+
 echo "=== HyperDesign 系统优化部署脚本 ==="
 echo "1. 创建 system 超级管理员账号"
 echo "2. 更新前后端代码"
@@ -8,15 +12,17 @@ echo ""
 echo "开始时间: $(date)"
 echo ""
 
+cd "$PROJECT_ROOT"
+
 # 检查是否在正确的目录
 if [ ! -f "backend/package.json" ]; then
-  echo "❌ 错误：请在 HyperDesign 项目根目录运行此脚本"
+  echo "❌ 错误：$PROJECT_ROOT 下未找到 backend/package.json，请确认项目根目录路径"
   exit 1
 fi
 
 # 1. 创建 system 超级管理员账号
 echo "步骤 1/4: 创建 system 超级管理员账号..."
-cd backend
+cd "$PROJECT_ROOT/backend"
 if [ ! -f "scripts/create-system-admin.js" ]; then
   echo "❌ 错误：未找到 create-system-admin.js 脚本"
   exit 1
@@ -31,8 +37,10 @@ echo "✅ system 账号创建成功"
 echo ""
 
 # 2. 重新构建前端
-echo "步骤 2/4: 重新构建前端..."
-cd ../frontend
+# frontend/Dockerfile 的 build 阶段会在镜像内自动执行 npm ci && npm run build，
+# 这里的 npm run build 仅用于本地类型检查提前暴露问题，非必需但保留作为快速校验。
+echo "步骤 2/4: 本地校验前端构建..."
+cd "$PROJECT_ROOT/frontend"
 npm run build
 if [ $? -ne 0 ]; then
   echo "❌ 前端构建失败"
@@ -43,7 +51,7 @@ echo ""
 
 # 3. 重新构建 Docker 镜像
 echo "步骤 3/4: 重新构建 Docker 镜像..."
-cd ../infra
+cd "$PROJECT_ROOT/infra"
 docker compose stop web api
 docker compose build web api
 if [ $? -ne 0 ]; then
