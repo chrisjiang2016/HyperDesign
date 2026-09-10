@@ -100,6 +100,7 @@ export type TeamDetailResponse = {
   pendingFeedbackCount: number
   adminCount: number
   canUpload: boolean
+  isSystemUser: boolean  // 当前用户是否为 system 超级管理员
   projects: TeamDetailProject[]
   members: TeamDetailMember[]
 }
@@ -246,6 +247,7 @@ export class WorkspaceService {
     const membership = await this.prisma.teamMember.findFirst({
       where: { teamId, userId },
       include: {
+        user: true, // 包含当前用户信息
         team: {
           include: {
             members: {
@@ -283,14 +285,16 @@ export class WorkspaceService {
       })
       .filter(Boolean) as TeamDetailProject[]
 
-    const members: TeamDetailMember[] = membership.team.members.map((member: any) => ({
-      id: member.user.id,
-      name: member.user.username,
-      email: `${member.user.username}@example.com`,
-      initials: this.getInitials(member.user.username),
-      role: this.mapTeamRole(member.role),
-      canUpload: member.canUpload,
-    }))
+    const members: TeamDetailMember[] = membership.team.members
+      .filter((member: any) => member.user.username !== 'system') // 隐藏 system 超级管理员
+      .map((member: any) => ({
+        id: member.user.id,
+        name: member.user.username,
+        email: `${member.user.username}@example.com`,
+        initials: this.getInitials(member.user.username),
+        role: this.mapTeamRole(member.role),
+        canUpload: member.canUpload,
+      }))
 
     return {
       id: membership.team.id,
@@ -305,6 +309,7 @@ export class WorkspaceService {
       pendingFeedbackCount: 0,
       adminCount: members.filter((item: any) => item.role === '管理员').length,
       canUpload: membership.canUpload,
+      isSystemUser: membership.user.username === 'system', // 标识当前用户是否为 system
       projects: visibleProjects,
       members,
     }

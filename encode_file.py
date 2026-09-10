@@ -1,4 +1,6 @@
-import { Alert, Button, Checkbox, Form, Input, message } from 'antd'
+import base64
+
+content = """import { Alert, Button, Checkbox, Form, Input, message } from 'antd'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { AxiosError } from 'axios'
@@ -48,3 +50,7 @@ export function LoginPage() {
     </div>
   </div></AuthLayout>
 }
+"""
+
+encoded = base64.b64encode(content.encode()).decode()
+print(encoded)

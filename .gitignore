@@ -62,3 +62,9 @@ playwright-report/
 
 # OpenClaw historical memory (not version controlled)
 memory/
+*.rar
+test resources/
+.env.production
+.env.production.fixed
+frontend/frontend-dist.tar.gz
+~$*

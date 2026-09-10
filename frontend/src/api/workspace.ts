@@ -55,6 +55,7 @@ export type TeamDetail = {
   pendingFeedbackCount: number
   adminCount: number
   canUpload: boolean
+  isSystemUser: boolean  // 当前用户是否为 system 超级管理员
   projects: Array<{
     id: string
     name: string
@@ -291,4 +292,8 @@ export async function inspectShareLink(token: string) {
 
 export async function acceptShareLink(token: string) {
   return (await http.post<ApiResponse<{ fileId: string }>>(`/shares/${token}/accept`)).data.data
+}
+
+export async function deleteTeamMember(teamId: string, userId: string) {
+  return (await http.delete<ApiResponse<null>>(`/teams/${teamId}/members/${userId}`)).data.data
 }

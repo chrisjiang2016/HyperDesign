@@ -86,7 +86,7 @@ export function UserSettingsPage() {
             </div>
             <div className="hd-security-tip">
               <span>✅</span>
-              <p>你的账号安全等级良好。两步验证已开启，建议每 90 天更换一次密码。</p>
+              <p>你的账号安全等级良好。建议定期更换密码以保障账号安全。</p>
             </div>
           </div>
           <div className="hd-rightbar-section">
@@ -227,25 +227,6 @@ export function UserSettingsPage() {
               </Button>
             </div>
           </Form>
-        </section>
-
-        <section className="hd-settings-card">
-          <h2>📱 登录管理</h2>
-          <div className="hd-settings-block">
-            <div className="hd-settings-label">绑定手机号</div>
-            <Input value="138****8888" disabled />
-            <div className="hd-form-hint">当前手机号已通过验证。</div>
-          </div>
-          <div className="hd-settings-block">
-            <div className="hd-settings-label">两步验证</div>
-            <div className="hd-2fa-row">
-              <span className="hd-2fa-ok">✅ 已开启</span>
-              <Button className="hd-btn-secondary" onClick={() => message.info('管理两步验证（演示）')}>
-                管理
-              </Button>
-            </div>
-            <div className="hd-form-hint">使用 TOTP 验证器 App（如 Google Authenticator）进行二次验证。</div>
-          </div>
         </section>
 
         <section className="hd-settings-card hd-settings-card--danger">

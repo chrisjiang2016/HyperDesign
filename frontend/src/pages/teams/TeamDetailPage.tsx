@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Button, Form, Input, Modal, message } from 'antd'
 import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined, UserAddOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
-import { createProject, deleteTeam, getTeamDetail, updateTeam, type TeamDetail } from '@/api/workspace'
+import { createProject, deleteTeam, deleteTeamMember, getTeamDetail, updateTeam, type TeamDetail } from '@/api/workspace'
 import { AppShellLayout } from '@/layouts/AppLayouts'
 import { RightPanel } from '@/components/workspace/RightPanel'
 import { PageEmpty, PageError, PageLoading } from '@/components/common/pagestates'
@@ -101,7 +101,7 @@ export function TeamDetailPage() {
     if (!team) return
     Modal.confirm({
       centered: true,
-      title: `删除团队“${team.name}”`,
+      title: `删除团队"${team.name}"`,
       content: '这将永久删除团队及其项目、原型文件和协作数据，无法恢复。',
       okText: '确认删除',
       okButtonProps: { danger: true, loading: deleting },
@@ -115,6 +115,27 @@ export function TeamDetailPage() {
           navigate('/', { replace: true })
         } finally {
           setDeleting(false)
+        }
+      },
+    })
+  }
+
+  const handleDeleteMember = (memberId: string, memberName: string) => {
+    if (!team) return
+    Modal.confirm({
+      centered: true,
+      title: `移除成员"${memberName}"`,
+      content: '该成员将失去对该团队所有项目的访问权限。',
+      okText: '确认移除',
+      okButtonProps: { danger: true },
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          await deleteTeamMember(team.id, memberId)
+          await loadTeam()
+          message.success('成员已移除')
+        } catch (error: any) {
+          message.error(error.response?.data?.message || '移除失败')
         }
       },
     })
@@ -168,7 +189,7 @@ export function TeamDetailPage() {
               {filteredProjects.map((project) => <button key={project.id} type="button" className="hd-project-card" onClick={() => navigate(`/projects/${project.id}`)}><h3>{project.name}</h3><p>{project.description}</p><div className="hd-project-meta"><span>{project.fileCount} 个文件</span><span>{project.updatedAt}</span></div></button>)}
               {filteredProjects.length === 0 ? <PageEmpty variant="files" title="没有可访问的项目" description={keyword ? '请调整搜索关键词后重试。' : '创建项目后，即可上传原型文件并邀请团队成员协作。'} action={!keyword && team.roleLabel === '管理员' ? { label: '新建项目', onClick: () => setProjectOpen(true) } : undefined} /> : null}
             </div> : <div className="hd-member-list">
-              {filteredMembers.map((member) => <div key={member.id} className="hd-member-row"><div className="hd-member-main"><div className="hd-member-avatar">{member.initials}</div><div><div className="hd-member-name">{member.name}</div><div className="hd-member-email">{member.email}</div></div></div><div className="hd-member-actions"><span className={`hd-team-role${member.role === '管理员' ? ' is-admin' : ''}`}>{member.role}</span><span className="hd-meta-pill">{member.canUpload ? '可上传' : '不可上传'}</span></div></div>)}
+              {filteredMembers.map((member) => <div key={member.id} className="hd-member-row"><div className="hd-member-main"><div className="hd-member-avatar">{member.initials}</div><div><div className="hd-member-name">{member.name}</div><div className="hd-member-email">{member.email}</div></div></div><div className="hd-member-actions"><span className={`hd-team-role${member.role === '管理员' ? ' is-admin' : ''}`}>{member.role}</span><span className="hd-meta-pill">{member.canUpload ? '可上传' : '不可上传'}</span>{team.isSystemUser && <Button type="text" danger icon={<DeleteOutlined />} size="small" onClick={() => handleDeleteMember(member.id, member.name)} style={{ marginLeft: 8 }} />}</div></div>)}
               {filteredMembers.length === 0 ? <PageEmpty title="没有匹配的成员" description={keyword ? '请调整搜索关键词后重试。' : '成员邀请能力将在协作权限模块完善后开放。'} /> : null}
             </div>}
           </section>
