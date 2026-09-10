@@ -12,6 +12,7 @@ const ProjectDetailPage = lazy(() => import('@/pages/projects/ProjectDetailPage'
 const PrototypeViewerPage = lazy(() => import('@/pages/projects/PrototypeViewerPage').then(({ PrototypeViewerPage }) => ({ default: PrototypeViewerPage })))
 const ShareAccessPage = lazy(() => import('@/pages/projects/ShareAccessPage').then(({ ShareAccessPage }) => ({ default: ShareAccessPage })))
 const UserSettingsPage = lazy(() => import('@/pages/settings/UserSettingsPage').then(({ UserSettingsPage }) => ({ default: UserSettingsPage })))
+const AdminUsersPage = lazy(() => import('@/pages/admin/AdminUsersPage').then(({ AdminUsersPage }) => ({ default: AdminUsersPage })))
 
 const withRouteLoader = (element: ReactNode) => <Suspense fallback={<PageLoading label="正在加载页面" />}>{element}</Suspense>
 const protectedRoute = (element: ReactNode) => <RequireAuth>{withRouteLoader(element)}</RequireAuth>
@@ -26,5 +27,6 @@ export const router = createBrowserRouter([
   { path: '/files/:fileId/preview', element: protectedRoute(<PrototypeViewerPage />) },
   { path: '/shares/:token', element: withRouteLoader(<ShareAccessPage />) },
   { path: '/settings', element: protectedRoute(<UserSettingsPage />) },
+  { path: '/admin/users', element: protectedRoute(<AdminUsersPage />) },
   { path: '*', element: <Navigate to="/" replace /> },
 ])

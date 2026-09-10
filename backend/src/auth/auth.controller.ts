@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post, Put, Req, Res, UseGuards } from '@nestjs/common'
+import { Body, Controller, Delete, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Put, Req, Res, UseGuards } from '@nestjs/common'
 import type { Request, Response } from 'express'
 import { ok } from '../common/api-response'
 import { RateLimit } from '../rate-limit/rate-limit.decorator'
@@ -6,6 +6,8 @@ import { RateLimitGuard } from '../rate-limit/rate-limit.guard'
 import { AuthService } from './auth.service'
 import {
   AddTeamMemberDto,
+  AdminCreateUserDto,
+  AdminUpdateUserDto,
   ChangePasswordDto,
   CreateFolderDto,
   CreateProjectDto,
@@ -82,6 +84,44 @@ export class AuthController {
     const user = await this.authService.getCurrentUser(request.cookies?.[SESSION_COOKIE])
     await this.authService.changePassword(user.id, dto)
     return ok(null, '密码修改成功，请重新登录')
+  }
+
+  // ===== 账号管理（仅超级管理员） =====
+  private assertSuperAdmin(user: { role: string }) {
+    if (user.role !== 'super_admin') {
+      throw new ForbiddenException({ errorCode: 'FORBIDDEN', message: '仅超级管理员可执行此操作' })
+    }
+  }
+
+  @Get('admin/users')
+  async listUsers(@Req() request: Request) {
+    const user = await this.currentUserService.getCurrentUserFromToken(request.cookies?.[SESSION_COOKIE])
+    this.assertSuperAdmin(user)
+    return ok(await this.authService.listUsers(), '用户列表获取成功')
+  }
+
+  @Post('admin/users')
+  async adminCreateUser(@Req() request: Request, @Body() dto: AdminCreateUserDto) {
+    const user = await this.currentUserService.getCurrentUserFromToken(request.cookies?.[SESSION_COOKIE])
+    this.assertSuperAdmin(user)
+    return ok(await this.authService.createUser(dto), '用户创建成功')
+  }
+
+  @Put('admin/users/:id')
+  async adminUpdateUser(@Req() request: Request, @Param('id') id: string, @Body() dto: AdminUpdateUserDto) {
+    const user = await this.currentUserService.getCurrentUserFromToken(request.cookies?.[SESSION_COOKIE])
+    this.assertSuperAdmin(user)
+    if (user.id === id) throw new ForbiddenException({ errorCode: 'FORBIDDEN', message: '不能修改自己的账号' })
+    return ok(await this.authService.updateUser(id, dto), '用户已更新')
+  }
+
+  @Delete('admin/users/:id')
+  async adminDeleteUser(@Req() request: Request, @Param('id') id: string) {
+    const user = await this.currentUserService.getCurrentUserFromToken(request.cookies?.[SESSION_COOKIE])
+    this.assertSuperAdmin(user)
+    if (user.id === id) throw new ForbiddenException({ errorCode: 'FORBIDDEN', message: '不能删除自己的账号' })
+    await this.authService.deleteUser(id)
+    return ok(null, '用户已删除')
   }
 
   @Get('workspace')

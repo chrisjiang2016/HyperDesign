@@ -129,66 +129,83 @@ export class WorkspaceService {
   ) {}
 
   async getWorkspace(userId: string) {
-    const memberships = await this.prisma.teamMember.findMany({
-      where: { userId },
-      include: {
-        team: {
+    const superAdmin = await this.isSuperAdmin(userId)
+    const memberships: any[] = superAdmin
+      ? (
+          await this.prisma.team.findMany({
+            where: {},
+            include: {
+              _count: { select: { members: true, projects: true } },
+              projects: { include: { permissions: true } },
+            },
+            orderBy: { createdAt: 'asc' },
+          })
+        ).map((team: any) => ({ team, role: 'ADMIN' as TeamRole }))
+      : await this.prisma.teamMember.findMany({
+          where: { userId },
           include: {
-            _count: { select: { members: true, projects: true } },
-            projects: {
+            team: {
               include: {
-                permissions: true,
+                _count: { select: { members: true, projects: true } },
+                projects: { include: { permissions: true } },
               },
             },
           },
-        },
-      },
-      orderBy: { createdAt: 'asc' },
+          orderBy: { createdAt: 'asc' },
+        })
+
+    const teams: TeamListItem[] = memberships.map((membership: any) => {
+      const myProjects = superAdmin
+        ? membership.team.projects
+        : membership.team.projects.filter((project: any) => project.permissions.some((permission: any) => permission.userId === userId))
+      return {
+        id: membership.team.id,
+        name: membership.team.name,
+        description: membership.team.description,
+        icon: membership.team.icon,
+        color: membership.team.color,
+        roleLabel: this.mapTeamRole(membership.role),
+        memberCount: membership.team._count.members,
+        projectCount: membership.team._count.projects,
+        extraStat: superAdmin
+          ? `${myProjects.length} 个全部项目`
+          : `${myProjects.length} 个我可访问项目`,
+      }
     })
 
-    const teams: TeamListItem[] = memberships.map((membership: any) => ({
-      id: membership.team.id,
-      name: membership.team.name,
-      description: membership.team.description,
-      icon: membership.team.icon,
-      color: membership.team.color,
-      roleLabel: this.mapTeamRole(membership.role),
-      memberCount: membership.team._count.members,
-      projectCount: membership.team._count.projects,
-      extraStat: `${membership.team.projects.filter((project: any) => project.permissions.some((permission: any) => permission.userId === userId)).length} 个我可访问项目`,
-    }))
-
-    const totalProjects = memberships.reduce((sum: number, membership: any) => {
-      return (
-        sum +
-        membership.team.projects.filter((project: any) =>
-          project.permissions.some((permission: any) => permission.userId === userId),
-        ).length
-      )
-    }, 0)
+    const totalProjects = superAdmin
+      ? memberships.reduce((sum: number, m: any) => sum + m.team.projects.length, 0)
+      : memberships.reduce((sum: number, membership: any) => {
+          return (
+            sum +
+            membership.team.projects.filter((project: any) =>
+              project.permissions.some((permission: any) => permission.userId === userId),
+            ).length
+          )
+        }, 0)
 
     const summary: WorkspaceSummaryCard[] = [
       {
         id: 's1',
-        label: '我参与的团队',
+        label: superAdmin ? '全部团队' : '我参与的团队',
         value: teams.length,
         metaPrimary: teams.length > 0 ? '已接入真实数据' : '暂无团队',
-        metaSecondary: '来源于团队成员关系',
+        metaSecondary: superAdmin ? '超级管理员可见所有团队' : '来源于团队成员关系',
         tone: 'success',
       },
       {
         id: 's2',
         label: '进行中项目',
         value: totalProjects,
-        metaPrimary: '按当前用户项目权限过滤',
-        metaSecondary: 'Sprint 2 实时返回',
+        metaPrimary: superAdmin ? '全部项目（超级管理员视角）' : '按当前用户项目权限过滤',
+        metaSecondary: '实时返回',
         tone: 'success',
       },
       {
         id: 's3',
         label: '可上传团队',
-        value: memberships.filter((item: any) => item.canUpload).length,
-        metaPrimary: '基于 team_members.canUpload',
+        value: superAdmin ? teams.length : memberships.filter((item: any) => item.canUpload).length,
+        metaPrimary: superAdmin ? '超级管理员可在所有团队上传' : '基于 team_members.canUpload',
         tone: 'warning',
       },
       {
@@ -244,48 +261,61 @@ export class WorkspaceService {
   }
 
   async getTeamDetail(userId: string, teamId: string): Promise<TeamDetailResponse | null> {
-    const membership = await this.prisma.teamMember.findFirst({
-      where: { teamId, userId },
-      include: {
-        user: true, // 包含当前用户信息
-        team: {
-          include: {
-            members: {
-              include: {
-                user: true,
-              },
+    const superAdmin = await this.isSuperAdmin(userId)
+
+    let team: any
+    let roleLabel: '管理员' | '成员' = '管理员'
+    if (superAdmin) {
+      team = await this.prisma.team.findUnique({
+        where: { id: teamId },
+        include: {
+          members: { include: { user: true } },
+          projects: {
+            include: {
+              permissions: true,
+              _count: { select: { files: true } },
+              files: { select: { pageCount: true } },
             },
-            projects: {
-              include: {
-                permissions: true,
-                _count: { select: { files: true } },
-                files: { select: { pageCount: true } },
+            orderBy: { updatedAt: 'desc' },
+          },
+        },
+      })
+      if (!team) return null
+    } else {
+      const membership = await this.prisma.teamMember.findFirst({
+        where: { teamId, userId },
+        include: {
+          user: true,
+          team: {
+            include: {
+              members: { include: { user: true } },
+              projects: {
+                include: {
+                  permissions: true,
+                  _count: { select: { files: true } },
+                  files: { select: { pageCount: true } },
+                },
+                orderBy: { updatedAt: 'desc' },
               },
-              orderBy: { updatedAt: 'desc' },
             },
           },
         },
-      },
-    })
-
-    if (!membership) return null
-
-    const visibleProjects = membership.team.projects
-      .map((project: any) => {
-        const permission = project.permissions.find((item: any) => item.userId === userId)
-        if (!permission) return null
-        return {
-          id: project.id,
-          name: project.name,
-          description: project.description,
-          fileCount: project._count.files,
-          updatedAt: this.formatRelativeDate(project.updatedAt),
-          permission: this.mapProjectPermission(permission.level),
-        }
       })
-      .filter(Boolean) as TeamDetailProject[]
+      if (!membership) return null
+      team = membership.team
+      roleLabel = this.mapTeamRole(membership.role)
+    }
 
-    const members: TeamDetailMember[] = membership.team.members
+    const visibleProjects = team.projects.map((project: any) => ({
+      id: project.id,
+      name: project.name,
+      description: project.description,
+      fileCount: project._count.files,
+      updatedAt: this.formatRelativeDate(project.updatedAt),
+      permission: superAdmin ? 'edit' : this.mapProjectPermission(project.permissions.find((item: any) => item.userId === userId)?.level ?? 'VIEW'),
+    })) as TeamDetailProject[]
+
+    const members: TeamDetailMember[] = team.members
       .filter((member: any) => member.user.username !== 'system') // 隐藏 system 超级管理员
       .map((member: any) => ({
         id: member.user.id,
@@ -297,55 +327,51 @@ export class WorkspaceService {
       }))
 
     return {
-      id: membership.team.id,
-      name: membership.team.name,
-      description: membership.team.description,
-      icon: membership.team.icon,
-      color: membership.team.color,
-      roleLabel: this.mapTeamRole(membership.role),
+      id: team.id,
+      name: team.name,
+      description: team.description,
+      icon: team.icon,
+      color: team.color,
+      roleLabel: superAdmin ? '管理员' : roleLabel,
       memberCount: members.length,
-      projectCount: membership.team.projects.length,
-      fileCountEstimate: membership.team.projects.reduce((sum: number, project: any) => sum + project._count.files, 0),
+      projectCount: team.projects.length,
+      fileCountEstimate: team.projects.reduce((sum: number, project: any) => sum + project._count.files, 0),
       pendingFeedbackCount: 0,
       adminCount: members.filter((item: any) => item.role === '管理员').length,
-      canUpload: membership.canUpload,
-      isSystemUser: membership.user.username === 'system', // 标识当前用户是否为 system
+      canUpload: true,
+      isSystemUser: superAdmin, // 标识当前用户是否为超级管理员
       projects: visibleProjects,
       members,
     }
   }
 
   async getProjectDetail(userId: string, projectId: string): Promise<ProjectDetailResponse | null> {
-    const permission = await this.prisma.projectPermission.findFirst({
-      where: { projectId, userId },
+    const superAdmin = await this.isSuperAdmin(userId)
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
       include: {
-        project: {
+        team: {
           include: {
-            team: {
-              include: {
-                members: { where: { userId }, select: { role: true } },
-              },
-            },
-            permissions: true,
-            _count: { select: { files: true } },
+            members: { where: { userId }, select: { role: true } },
           },
         },
+        permissions: true,
+        _count: { select: { files: true } },
       },
     })
-
-    if (!permission) return null
+    if (!project) return null
 
     return {
-      id: permission.project.id,
-      teamId: permission.project.teamId,
-      teamName: permission.project.team.name,
-      name: permission.project.name,
-      description: permission.project.description,
-      permission: this.mapProjectPermission(permission.level),
-      canDelete: permission.project.team.members[0]?.role === 'ADMIN',
+      id: project.id,
+      teamId: project.teamId,
+      teamName: project.team.name,
+      name: project.name,
+      description: project.description,
+      permission: superAdmin ? 'edit' : this.mapProjectPermission(project.permissions.find((p: any) => p.userId === userId)?.level ?? 'VIEW'),
+      canDelete: superAdmin || project.team.members[0]?.role === 'ADMIN',
       stats: {
-        fileCount: permission.project._count.files,
-        collaboratorCount: permission.project.permissions.length,
+        fileCount: project._count.files,
+        collaboratorCount: project.permissions.length,
         pendingCommentCount: await this.prisma.annotation.count({
           where: { file: { projectId }, status: 'OPEN' },
         }),
@@ -355,24 +381,34 @@ export class WorkspaceService {
   }
 
   async getTeamProjectsForNav(userId: string) {
-    const memberships = await this.prisma.teamMember.findMany({
-      where: { userId },
-      include: {
-        team: {
+    const superAdmin = await this.isSuperAdmin(userId)
+    const memberships: any[] = superAdmin
+      ? (
+          await this.prisma.team.findMany({
+            where: {},
+            include: {
+              projects: {
+                include: { permissions: { where: { userId } } },
+                orderBy: { updatedAt: 'desc' },
+              },
+            },
+            orderBy: { createdAt: 'asc' },
+          })
+        ).map((team: any) => ({ team, role: 'ADMIN' as TeamRole }))
+      : await this.prisma.teamMember.findMany({
+          where: { userId },
           include: {
-            projects: {
+            team: {
               include: {
-                permissions: {
-                  where: { userId },
+                projects: {
+                  include: { permissions: { where: { userId } } },
+                  orderBy: { updatedAt: 'desc' },
                 },
               },
-              orderBy: { updatedAt: 'desc' },
             },
           },
-        },
-      },
-      orderBy: { createdAt: 'asc' },
-    })
+          orderBy: { createdAt: 'asc' },
+        })
 
     return memberships.map((membership: any) => ({
       id: membership.team.id,
@@ -381,17 +417,18 @@ export class WorkspaceService {
       projectCount: membership.team.projects.length,
       roleLabel: this.mapTeamRole(membership.role),
       projects: membership.team.projects
-        .filter((project: any) => project.permissions.length > 0)
+        .filter((project: any) => superAdmin || project.permissions.length > 0)
         .map((project: any) => ({
           id: project.id,
           name: project.name,
-          permission: this.mapProjectPermission(project.permissions[0].level),
+          permission: this.mapProjectPermission(project.permissions[0]?.level ?? 'EDIT'),
         })),
     }))
   }
 
   async updateTeam(userId: string, teamId: string, payload: { name?: string; description?: string }) {
-    await this.requireTeamAdmin(userId, teamId)
+    const superAdmin = await this.isSuperAdmin(userId)
+    await this.requireTeamAdmin(userId, teamId, superAdmin)
     const data = Object.fromEntries(
       Object.entries({ name: payload.name?.trim(), description: payload.description?.trim() }).filter(([, value]) => value),
     )
@@ -400,14 +437,16 @@ export class WorkspaceService {
   }
 
   async deleteTeam(userId: string, teamId: string) {
-    await this.requireTeamAdmin(userId, teamId)
+    const superAdmin = await this.isSuperAdmin(userId)
+    await this.requireTeamAdmin(userId, teamId, superAdmin)
     const projects = await this.prisma.project.findMany({ where: { teamId }, select: { id: true } })
     for (const project of projects) await this.deleteProjectAssets(project.id)
     await this.prisma.team.delete({ where: { id: teamId } })
   }
 
   async listTeamMembers(userId: string, teamId: string) {
-    await this.requireTeamMember(userId, teamId)
+    const superAdmin = await this.isSuperAdmin(userId)
+    await this.requireTeamMember(userId, teamId, superAdmin)
     const members = await this.prisma.teamMember.findMany({
       where: { teamId },
       include: { user: { select: { id: true, username: true, role: true } } },
@@ -423,7 +462,8 @@ export class WorkspaceService {
   }
 
   async addTeamMember(userId: string, teamId: string, payload: { username: string; canUpload?: boolean }) {
-    await this.requireTeamAdmin(userId, teamId)
+    const superAdmin = await this.isSuperAdmin(userId)
+    await this.requireTeamAdmin(userId, teamId, superAdmin)
     const user = await this.prisma.user.findUnique({ where: { username: payload.username } })
     if (!user) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '用户不存在' })
     const exists = await this.prisma.teamMember.findUnique({ where: { teamId_userId: { teamId, userId: user.id } } })
@@ -436,14 +476,16 @@ export class WorkspaceService {
   }
 
   async updateMemberUploadPermission(userId: string, teamId: string, memberUserId: string, canUpload: boolean) {
-    await this.requireTeamAdmin(userId, teamId)
+    const superAdmin = await this.isSuperAdmin(userId)
+    await this.requireTeamAdmin(userId, teamId, superAdmin)
     const member = await this.prisma.teamMember.findUnique({ where: { teamId_userId: { teamId, userId: memberUserId } } })
     if (!member) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '团队成员不存在' })
     return this.prisma.teamMember.update({ where: { id: member.id }, data: { canUpload } })
   }
 
   async removeTeamMember(userId: string, teamId: string, memberUserId: string) {
-    const caller = await this.requireTeamAdmin(userId, teamId)
+    const superAdmin = await this.isSuperAdmin(userId)
+    const caller = await this.requireTeamAdmin(userId, teamId, superAdmin)
     const member = await this.prisma.teamMember.findUnique({ where: { teamId_userId: { teamId, userId: memberUserId } } })
     if (!member) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '团队成员不存在' })
     if (member.role === 'ADMIN') {
@@ -457,17 +499,19 @@ export class WorkspaceService {
   }
 
   async requireProjectUpload(userId: string, projectId: string) {
-    await this.requireProjectEdit(userId, projectId)
+    const superAdmin = await this.isSuperAdmin(userId)
+    await this.requireProjectEdit(userId, projectId, superAdmin)
     const project = await this.prisma.project.findUnique({ where: { id: projectId }, select: { teamId: true } })
     if (!project) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '项目不存在或无权访问' })
-    const membership = await this.requireTeamMember(userId, project.teamId)
-    if (membership.role !== 'ADMIN' && !membership.canUpload) {
+    const membership = await this.requireTeamMember(userId, project.teamId, superAdmin)
+    if (!superAdmin && membership.role !== 'ADMIN' && !membership.canUpload) {
       throw new ForbiddenException({ errorCode: 'FORBIDDEN', message: '没有向该团队上传原型的权限' })
     }
   }
 
   async requireProjectFolder(userId: string, projectId: string, folderId: string) {
-    await this.requireProjectEdit(userId, projectId)
+    const superAdmin = await this.isSuperAdmin(userId)
+    await this.requireProjectEdit(userId, projectId, superAdmin)
     return this.requireFolderInProject(projectId, folderId)
   }
 
@@ -507,9 +551,10 @@ export class WorkspaceService {
   }
 
   async listProjectFiles(userId: string, projectId: string) {
-    await this.requireProjectView(userId, projectId)
+    const superAdmin = await this.isSuperAdmin(userId)
+    await this.requireProjectView(userId, projectId, superAdmin)
     const membership = await this.prisma.teamMember.findFirst({ where: { userId, team: { projects: { some: { id: projectId } } } }, select: { role: true } })
-    const isTeamAdmin = membership?.role === 'ADMIN'
+    const isTeamAdmin = superAdmin || membership?.role === 'ADMIN'
     const files = await this.prisma.prototypeFile.findMany({
       where: isTeamAdmin ? { projectId } : { projectId, OR: [{ uploaderId: userId }, { permissions: { some: { userId, canView: true } } }] },
       include: { uploader: { select: { username: true } } },
@@ -535,13 +580,14 @@ export class WorkspaceService {
   }
 
   async deleteProjectFile(userId: string, projectId: string, fileId: string) {
+    const superAdmin = await this.isSuperAdmin(userId)
     const file = await this.prisma.prototypeFile.findFirst({
       where: { id: fileId, projectId },
       select: { id: true, uploaderId: true, storageKey: true, project: { select: { teamId: true } } },
     })
     if (!file) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '项目文件不存在' })
     if (!file.project) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '项目文件不存在' })
-    const membership = await this.requireTeamMember(userId, file.project.teamId)
+    const membership = await this.requireTeamMember(userId, file.project.teamId, superAdmin)
     const permission = await this.prisma.filePermission.findUnique({ where: { fileId_userId: { fileId, userId } }, select: { canDelete: true } })
     if (membership.role !== 'ADMIN' && file.uploaderId !== userId && !permission?.canDelete) {
       throw new ForbiddenException({ errorCode: 'FORBIDDEN', message: '没有删除该原型文件的权限' })
@@ -568,7 +614,8 @@ export class WorkspaceService {
     targetUserId: string,
     payload: { canView: boolean; canComment: boolean; canEdit: boolean; canDelete: boolean },
   ) {
-    await this.requireProjectEdit(userId, projectId)
+    const superAdmin = await this.isSuperAdmin(userId)
+    await this.requireProjectEdit(userId, projectId, superAdmin)
     const file = await this.prisma.prototypeFile.findFirst({ where: { id: fileId, projectId }, select: { id: true } })
     if (!file) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '项目文件不存在' })
     const member = await this.prisma.teamMember.findFirst({ where: { userId: targetUserId, team: { projects: { some: { id: projectId } } } } })
@@ -582,7 +629,8 @@ export class WorkspaceService {
   }
 
   async listFilePermissions(userId: string, projectId: string, fileId: string) {
-    await this.requireProjectEdit(userId, projectId)
+    const superAdmin = await this.isSuperAdmin(userId)
+    await this.requireProjectEdit(userId, projectId, superAdmin)
     const file = await this.prisma.prototypeFile.findFirst({ where: { id: fileId, projectId }, select: { id: true, uploaderId: true } })
     if (!file) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '项目文件不存在' })
     const project = await this.prisma.project.findUnique({
@@ -607,14 +655,17 @@ export class WorkspaceService {
   }
 
   async getFirstPreview(userId: string, projectId: string) {
-    await this.requireProjectView(userId, projectId)
+    const superAdmin = await this.isSuperAdmin(userId)
+    await this.requireProjectView(userId, projectId, superAdmin)
     const file = await this.prisma.prototypeFile.findFirst({
-      where: {
-        projectId,
-        parseStatus: 'SUCCESS',
-        entryPageId: { not: null },
-        OR: [{ uploaderId: userId }, { permissions: { some: { userId, canView: true } } }],
-      },
+      where: superAdmin
+        ? { projectId, parseStatus: 'SUCCESS', entryPageId: { not: null } }
+        : {
+            projectId,
+            parseStatus: 'SUCCESS',
+            entryPageId: { not: null },
+            OR: [{ uploaderId: userId }, { permissions: { some: { userId, canView: true } } }],
+          },
       select: { id: true, entryPageId: true, pages: { where: { isEntry: true }, select: { relativePath: true }, take: 1 } },
       orderBy: { updatedAt: 'desc' },
     })
@@ -632,7 +683,8 @@ export class WorkspaceService {
   }
 
   async getProjectDirectory(userId: string, projectId: string) {
-    await this.requireProjectView(userId, projectId)
+    const superAdmin = await this.isSuperAdmin(userId)
+    await this.requireProjectView(userId, projectId, superAdmin)
     const [folders, files] = await Promise.all([
       this.prisma.projectFolder.findMany({ where: { projectId }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] }),
       this.listProjectFiles(userId, projectId),
@@ -650,7 +702,8 @@ export class WorkspaceService {
   }
 
   async createFolder(userId: string, projectId: string, payload: { name: string; parentId?: string }) {
-    await this.requireProjectEdit(userId, projectId)
+    const superAdmin = await this.isSuperAdmin(userId)
+    await this.requireProjectEdit(userId, projectId, superAdmin)
     if (payload.parentId) await this.requireFolderInProject(projectId, payload.parentId)
     const sortOrder = await this.prisma.projectFolder.count({ where: { projectId, parentId: payload.parentId ?? null } })
     try {
@@ -661,7 +714,8 @@ export class WorkspaceService {
   }
 
   async updateFolder(userId: string, projectId: string, folderId: string, payload: { name?: string; parentId?: string }) {
-    await this.requireProjectEdit(userId, projectId)
+    const superAdmin = await this.isSuperAdmin(userId)
+    await this.requireProjectEdit(userId, projectId, superAdmin)
     const folder = await this.requireFolderInProject(projectId, folderId)
     if (payload.parentId === folderId) throw new ConflictException({ errorCode: 'INVALID_FOLDER_PARENT', message: '文件夹不能移动到自身' })
     if (payload.parentId) {
@@ -679,7 +733,8 @@ export class WorkspaceService {
   }
 
   async deleteFolder(userId: string, projectId: string, folderId: string) {
-    await this.requireProjectEdit(userId, projectId)
+    const superAdmin = await this.isSuperAdmin(userId)
+    await this.requireProjectEdit(userId, projectId, superAdmin)
     await this.requireFolderInProject(projectId, folderId)
     // Preserve uploaded files by returning all descendant files to the project root before cascade deletion.
     const folderIds = await this.listFolderDescendantIds(projectId, folderId)
@@ -690,7 +745,8 @@ export class WorkspaceService {
   }
 
   async moveProjectFile(userId: string, projectId: string, fileId: string, folderId?: string) {
-    await this.requireProjectEdit(userId, projectId)
+    const superAdmin = await this.isSuperAdmin(userId)
+    await this.requireProjectEdit(userId, projectId, superAdmin)
     const file = await this.prisma.prototypeFile.findFirst({ where: { id: fileId, projectId } })
     if (!file) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '项目文件不存在' })
     if (folderId) await this.requireFolderInProject(projectId, folderId)
@@ -698,24 +754,26 @@ export class WorkspaceService {
   }
 
   async listTeamProjects(userId: string, teamId: string) {
-    await this.requireTeamMember(userId, teamId)
+    const superAdmin = await this.isSuperAdmin(userId)
+    await this.requireTeamMember(userId, teamId, superAdmin)
     const projects = await this.prisma.project.findMany({
-      where: { teamId, permissions: { some: { userId } } },
-      include: { permissions: { where: { userId }, select: { level: true } } },
+      where: superAdmin ? { teamId } : { teamId, permissions: { some: { userId } } },
+      include: { permissions: { where: superAdmin ? undefined : { userId }, select: { level: true } } },
       orderBy: { updatedAt: 'desc' },
     })
     return projects.map((project) => ({
       id: project.id,
       name: project.name,
       description: project.description,
-      permission: this.mapProjectPermission(project.permissions[0].level),
+      permission: superAdmin ? 'edit' : this.mapProjectPermission(project.permissions[0].level),
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
     }))
   }
 
   async createProject(userId: string, teamId: string, payload: { name: string; description?: string }) {
-    await this.requireTeamAdmin(userId, teamId)
+    const superAdmin = await this.isSuperAdmin(userId)
+    await this.requireTeamAdmin(userId, teamId, superAdmin)
     const project = await this.prisma.project.create({
       data: {
         teamId,
@@ -729,7 +787,8 @@ export class WorkspaceService {
   }
 
   async updateProject(userId: string, projectId: string, payload: { name?: string; description?: string }) {
-    await this.requireProjectEdit(userId, projectId)
+    const superAdmin = await this.isSuperAdmin(userId)
+    await this.requireProjectEdit(userId, projectId, superAdmin)
     const data = Object.fromEntries(
       Object.entries({ name: payload.name?.trim(), description: payload.description?.trim() }).filter(([, value]) => value),
     )
@@ -738,9 +797,10 @@ export class WorkspaceService {
   }
 
   async deleteProject(userId: string, projectId: string) {
+    const superAdmin = await this.isSuperAdmin(userId)
     const project = await this.prisma.project.findUnique({ where: { id: projectId }, select: { teamId: true } })
     if (!project) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '项目不存在' })
-    await this.requireTeamAdmin(userId, project.teamId)
+    await this.requireTeamAdmin(userId, project.teamId, superAdmin)
     await this.deleteProjectAssets(projectId)
     await this.prisma.project.delete({ where: { id: projectId } })
   }
@@ -761,13 +821,26 @@ export class WorkspaceService {
     )
   }
 
-  private async requireTeamMember(userId: string, teamId: string) {
+  private async isSuperAdmin(userId: string): Promise<boolean> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } })
+    return user?.role === 'SUPER_ADMIN'
+  }
+
+  private async requireTeamMember(userId: string, teamId: string, superAdmin = false) {
+    if (superAdmin) {
+      const team = await this.prisma.team.findUnique({ where: { id: teamId } })
+      if (!team) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '团队不存在或无权访问' })
+      return { role: 'ADMIN' as TeamRole, canUpload: true, teamId, userId } as any
+    }
     const member = await this.prisma.teamMember.findUnique({ where: { teamId_userId: { teamId, userId } } })
     if (!member) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '团队不存在或无权访问' })
     return member
   }
 
-  private async requireTeamAdmin(userId: string, teamId: string) {
+  private async requireTeamAdmin(userId: string, teamId: string, superAdmin = false) {
+    if (superAdmin) {
+      return { role: 'ADMIN' as TeamRole, canUpload: true, teamId, userId } as any
+    }
     const member = await this.requireTeamMember(userId, teamId)
     if (member.role !== 'ADMIN') throw new ForbiddenException({ errorCode: 'FORBIDDEN', message: '仅团队管理员可执行此操作' })
     return member
@@ -793,15 +866,20 @@ export class WorkspaceService {
     return ids
   }
 
-  private async requireProjectView(userId: string, projectId: string) {
+  private async requireProjectView(userId: string, projectId: string, superAdmin = false) {
+    if (superAdmin) {
+      const project = await this.prisma.project.findUnique({ where: { id: projectId } })
+      if (!project) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '项目不存在或无权访问' })
+      return { level: 'EDIT' as ProjectPermissionLevel, projectId, userId } as any
+    }
     const permission = await this.prisma.projectPermission.findUnique({ where: { projectId_userId: { projectId, userId } } })
     if (!permission) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '项目不存在或无权访问' })
     return permission
   }
 
-  private async requireProjectEdit(userId: string, projectId: string) {
-    const permission = await this.requireProjectView(userId, projectId)
-    if (permission.level !== 'EDIT') throw new ForbiddenException({ errorCode: 'FORBIDDEN', message: '没有项目编辑权限' })
+  private async requireProjectEdit(userId: string, projectId: string, superAdmin = false) {
+    const permission = await this.requireProjectView(userId, projectId, superAdmin)
+    if (!superAdmin && permission.level !== 'EDIT') throw new ForbiddenException({ errorCode: 'FORBIDDEN', message: '没有项目编辑权限' })
     return permission
   }
 

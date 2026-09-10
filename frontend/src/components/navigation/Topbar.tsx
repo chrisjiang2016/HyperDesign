@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { BellOutlined, SearchOutlined } from '@ant-design/icons'
+import { BellOutlined, SearchOutlined, UserAddOutlined } from '@ant-design/icons'
 import { useAuthStore } from '@/store/authStore'
 
 export interface TopbarProps {
@@ -41,6 +41,12 @@ export function Topbar({
           </label>
         ) : null}
         {rightExtra}
+        {user?.role === 'super_admin' ? (
+          <Link to="/admin/users" className="hd-icon-btn" title="账号管理" aria-label="账号管理" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13 }}>
+            <UserAddOutlined />
+            <span>账号管理</span>
+          </Link>
+        ) : null}
         <button type="button" className="hd-icon-btn" title="通知" aria-label="通知">
           <BellOutlined />
         </button>

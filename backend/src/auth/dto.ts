@@ -120,6 +120,36 @@ export class MoveProjectFileDto {
   folderId?: string
 }
 
+export class AdminCreateUserDto {
+  @Matches(usernameRule, { message: '用户名需为 5-64 位英文字母或数字' })
+  username!: string
+
+  @Matches(passwordRule, { message: '密码需为 6-128 位英文字母或数字' })
+  password!: string
+
+  @IsOptional()
+  @IsString({ message: '角色必须为文本' })
+  role?: 'super_admin' | 'sub_admin' | 'employee'
+
+  @IsOptional()
+  @IsString({ message: '状态必须为文本' })
+  status?: 'active' | 'disabled'
+}
+
+export class AdminUpdateUserDto {
+  @IsOptional()
+  @IsString({ message: '角色必须为文本' })
+  role?: 'super_admin' | 'sub_admin' | 'employee'
+
+  @IsOptional()
+  @IsString({ message: '状态必须为文本' })
+  status?: 'active' | 'disabled'
+
+  @IsOptional()
+  @Matches(passwordRule, { message: '密码需为 6-128 位英文字母或数字' })
+  password?: string
+}
+
 export class UpdateFilePermissionDto {
   @IsBoolean({ message: 'canView 必须为布尔值' })
   canView!: boolean
