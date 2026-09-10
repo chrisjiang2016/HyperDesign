@@ -19,7 +19,8 @@ interface WorkspaceState {
   navTeams: NavTeam[]
   navLoading: boolean
   fetchNavTeams: () => Promise<void>
-  toggleGroup: (groupId: string) => void
+  /** defaultCollapsed 为该分组在未手动操作时的默认状态，必须传入才能保证首次点击取反正确 */
+  toggleGroup: (groupId: string, defaultCollapsed?: boolean) => void
   setGroupCollapsed: (groupId: string, collapsed: boolean) => void
   setRightbarVisible: (visible: boolean) => void
 }
@@ -40,10 +41,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       set({ navLoading: false })
     }
   },
-  toggleGroup: (groupId) => {
+  toggleGroup: (groupId, defaultCollapsed = false) => {
+    const stored = get().collapsedGroups
+    // 未手动设置过时要基于"当前实际显示状态"取反，否则默认折叠的分组首次点击后仍是折叠
+    const current = groupId in stored ? stored[groupId] : defaultCollapsed
     const next = {
-      ...get().collapsedGroups,
-      [groupId]: !get().collapsedGroups[groupId],
+      ...stored,
+      [groupId]: !current,
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
     set({ collapsedGroups: next })

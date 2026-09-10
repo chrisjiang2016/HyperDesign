@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert, Button, Checkbox, Form, Input, Modal, Table, Upload, message } from 'antd'
 import { DeleteOutlined, EditOutlined, EyeOutlined, FileZipOutlined, FolderAddOutlined, InboxOutlined, LockOutlined, SearchOutlined, ShareAltOutlined, UploadOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, Link } from 'react-router-dom'
 import { createProjectFolder, deleteProject, deleteProjectFile, getProjectDetail, getProjectDirectory, getProjectFilePermissions, getProjectFiles, retryProjectFileParse, updateProject, updateProjectFilePermission, uploadProjectFile, type FilePermissionMember, type ProjectDetail, type ProjectFile, type ProjectFolder } from '@/api/workspace'
 import { AppShellLayout } from '@/layouts/AppLayouts'
 import { RightPanel } from '@/components/workspace/RightPanel'
@@ -190,7 +190,7 @@ export function ProjectDetailPage() {
     </div>
   }
 
-  return <AppShellLayout breadcrumb={<><span>我的团队</span><span>/</span><span>{project?.teamName ?? '项目'}</span><span>/</span><span className="is-current">{project?.name ?? '项目详情'}</span></>} searchPlaceholder="搜索项目或文件" rightbar={<RightPanel title="项目动态" activities={activities} />}>
+  return <AppShellLayout breadcrumb={<><Link to="/">我的团队</Link><span>/</span><Link to={project ? `/teams/${project.teamId}` : '/teams'}>{project?.teamName ?? '项目'}</Link><span>/</span><span className="is-current">{project?.name ?? '项目详情'}</span></>} searchPlaceholder="搜索项目或文件" rightbar={<RightPanel title="项目动态" activities={activities} />}>
     <div className="hd-page">
       {error ? <PageError title="项目详情加载失败" description={error} action={{ label: '重新加载', onClick: () => void loadProject() }} /> : null}
       {loading ? <PageLoading label="正在加载项目与原型资产" /> : null}

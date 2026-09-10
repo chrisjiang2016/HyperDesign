@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button, Form, Input, message } from 'antd'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { AppShellLayout } from '@/layouts/AppLayouts'
 import { useAuthStore } from '@/store/authStore'
 import { changePassword as requestPasswordChange, logout as requestLogout } from '@/api/auth'
@@ -60,7 +60,7 @@ export function UserSettingsPage() {
     <AppShellLayout
       breadcrumb={
         <>
-          <span>工作台</span>
+          <Link to="/">工作台</Link>
           <span>/</span>
           <span className="is-current">个人设置</span>
         </>

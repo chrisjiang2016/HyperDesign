@@ -5,6 +5,7 @@ import { AppShellLayout } from '@/layouts/AppLayouts'
 import { PageEmpty, PageError, PageLoading } from '@/components/common/pagestates'
 import { deleteUser, listUsers, createUser, updateUser, type AdminUser } from '@/api/admin'
 import { useAuthStore } from '@/store/authStore'
+import { Link } from 'react-router-dom'
 
 const roleLabels: Record<AdminUser['role'], string> = {
   super_admin: '超级管理员',
@@ -149,7 +150,7 @@ export function AdminUsersPage() {
     <AppShellLayout
       breadcrumb={
         <>
-          <span>系统管理</span>
+          <Link to="/admin/users">系统管理</Link>
           <span>/</span>
           <span className="is-current">账号管理</span>
         </>

@@ -1,7 +1,7 @@
 import { Button, Form, Input, Modal } from 'antd'
 import { PlayCircleOutlined, PlusOutlined } from '@ant-design/icons'
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { AppShellLayout } from '@/layouts/AppLayouts'
 import { RightPanel } from '@/components/workspace/RightPanel'
 import { PageEmpty, PageError, PageLoading } from '@/components/common/pagestates'
@@ -57,7 +57,7 @@ export function TeamsPage() {
     <AppShellLayout
       breadcrumb={
         <>
-          <span>工作台</span>
+          <Link to="/">工作台</Link>
           <span>/</span>
           <span className="is-current">我的团队</span>
         </>

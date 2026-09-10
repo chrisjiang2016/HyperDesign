@@ -18,7 +18,9 @@ export function PageBreadcrumb({ items }: { items: BreadcrumbItem[] }) {
             {item.href && !isLast ? (
               <Link to={item.href}>{item.title}</Link>
             ) : (
-              <span className={isLast ? 'is-current' : undefined}>{item.title}</span>
+              <span className={isLast ? 'is-current' : undefined} aria-current={isLast ? 'page' : undefined}>
+                {item.title}
+              </span>
             )}
           </Fragment>
         )

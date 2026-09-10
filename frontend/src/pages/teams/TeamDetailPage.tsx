@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Button, Form, Input, Modal, message } from 'antd'
 import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined, UserAddOutlined } from '@ant-design/icons'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, Link } from 'react-router-dom'
 import { createProject, deleteTeam, deleteTeamMember, getTeamDetail, updateTeam, type TeamDetail } from '@/api/workspace'
 import { AppShellLayout } from '@/layouts/AppLayouts'
 import { RightPanel } from '@/components/workspace/RightPanel'
@@ -143,7 +143,7 @@ export function TeamDetailPage() {
 
   return (
     <AppShellLayout
-      breadcrumb={<><span>我的团队</span><span>/</span><span className="is-current">{team?.name ?? '团队详情'}</span></>}
+      breadcrumb={<><Link to="/">我的团队</Link><span>/</span><span className="is-current">{team?.name ?? '团队详情'}</span></>}
       searchPlaceholder="搜索项目、成员、原型文件"
       rightbar={<RightPanel title="最近活动" activities={teamActivities} />}
     >
