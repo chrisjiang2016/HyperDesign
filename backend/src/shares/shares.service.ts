@@ -86,7 +86,10 @@ export class SharesService {
   private async requireFileManager(userId: string, fileId: string) {
     const file = await this.prisma.prototypeFile.findUnique({ where: { id: fileId }, select: { id: true, uploaderId: true, permissions: { where: { userId }, select: { canEdit: true } } } })
     if (!file) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '文件不存在' })
-    if (file.uploaderId !== userId && !file.permissions[0]?.canEdit) throw new ForbiddenException({ errorCode: 'FORBIDDEN', message: '仅文件上传者或编辑者可管理分享链接' })
+    if (file.uploaderId === userId || file.permissions[0]?.canEdit) return
+    // 平台级超级管理员拥有全局数据权限，可管理任意文件的分享链接
+    if (await this.workspace.isSuperAdmin(userId)) return
+    throw new ForbiddenException({ errorCode: 'FORBIDDEN', message: '仅文件上传者或编辑者可管理分享链接' })
   }
 
   private async findActiveToken(token: string) {

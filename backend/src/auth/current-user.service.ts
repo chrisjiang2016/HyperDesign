@@ -821,7 +821,8 @@ export class WorkspaceService {
     )
   }
 
-  private async isSuperAdmin(userId: string): Promise<boolean> {
+  /** 平台级超级管理员判断。其它模块（如分享管理）也需要据此绕过资源级归属校验，故为 public。 */
+  async isSuperAdmin(userId: string): Promise<boolean> {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } })
     return user?.role === 'SUPER_ADMIN'
   }

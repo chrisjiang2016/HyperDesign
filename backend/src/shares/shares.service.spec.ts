@@ -4,6 +4,7 @@ import { SharesService } from './shares.service'
 describe('SharesService', () => {
   const now = new Date('2026-07-20T10:00:00.000Z')
   let prisma: any
+  let workspace: any
   let service: SharesService
 
   beforeEach(() => {
@@ -17,7 +18,9 @@ describe('SharesService', () => {
       operationLog: { create: jest.fn().mockResolvedValue({}) },
       $transaction: jest.fn(async (callback) => callback({ shareGrant: prisma.shareGrant, teamMember: prisma.teamMember })),
     }
-    service = new SharesService(prisma, {} as never)
+    // 默认非超管，需要验证超管放行的用例单独覆写
+    workspace = { isSuperAdmin: jest.fn().mockResolvedValue(false) }
+    service = new SharesService(prisma, workspace)
   })
 
   afterEach(() => jest.useRealTimers())
@@ -40,6 +43,23 @@ describe('SharesService', () => {
   it('rejects non-owner and non-editor share management', async () => {
     prisma.prototypeFile.findUnique.mockResolvedValue({ id: 'file-1', uploaderId: 'owner-1', permissions: [{ canEdit: false }] })
     await expect(service.list('member-1', 'file-1')).rejects.toBeInstanceOf(ForbiddenException)
+  })
+
+  it('allows a super admin to manage share links of files uploaded by others', async () => {
+    prisma.prototypeFile.findUnique.mockResolvedValue({ id: 'file-1', uploaderId: 'owner-1', permissions: [] })
+    prisma.shareLink.findMany.mockResolvedValue([])
+    workspace.isSuperAdmin.mockResolvedValue(true)
+
+    await expect(service.list('system-admin', 'file-1')).resolves.toEqual([])
+    expect(workspace.isSuperAdmin).toHaveBeenCalledWith('system-admin')
+  })
+
+  it('skips the super admin lookup when the caller already owns the file', async () => {
+    prisma.prototypeFile.findUnique.mockResolvedValue(managerFile)
+    prisma.shareLink.findMany.mockResolvedValue([])
+    await expect(service.list('owner-1', 'file-1')).resolves.toEqual([])
+    // 归属校验先通过时不应额外查库判断超管身份
+    expect(workspace.isSuperAdmin).not.toHaveBeenCalled()
   })
 
   it('does not expose the token in share link listing', async () => {
