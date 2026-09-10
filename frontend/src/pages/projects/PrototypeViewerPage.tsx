@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Button, Input, App as AntdApp, Modal, Select } from 'antd'
-import { CommentOutlined, ExportOutlined, LeftOutlined, MinusOutlined, PlusOutlined, RightOutlined, ShareAltOutlined, ToolOutlined } from '@ant-design/icons'
+import { Button, Input, App as AntdApp, Modal, Select, Tag, Tooltip } from 'antd'
+import { CommentOutlined, CopyOutlined, ExportOutlined, LeftOutlined, MinusOutlined, PlusOutlined, RightOutlined, ShareAltOutlined, TeamOutlined, ToolOutlined } from '@ant-design/icons'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ViewerShellLayout } from '@/layouts/AppLayouts'
 import { NavTree } from '@/components/navigation/NavTree'
 import { PageEmpty, PageError, PageLoading } from '@/components/common/pagestates'
-import { createAnnotationComment, createFileAnnotation, createFileShareLink, getFileAnnotations, getFileShareLinks, getFirstPreview, getNavTeamsProjects, getProjectDetail, getProjectFiles, getPrototypePages, revokeFileShareLink, type CollaborationAnnotation, type FilePermission, type NavTeam, type ProjectDetail, type PrototypePage, type ShareLink } from '@/api/workspace'
+import { createAnnotationComment, createFileAnnotation, createFileShareLink, getFileAnnotations, getFileShareLinks, getFirstPreview, getNavTeamsProjects, getProjectDetail, getProjectFiles, getPrototypePages, revokeFileShareLink, type CollaborationAnnotation, type FilePermission, type NavTeam, type ProjectDetail, type PrototypePage, type ShareAccessType, type ShareLink } from '@/api/workspace'
 import type { ViewerMarker, ViewerComment, ViewerAnnotationPayload } from '@/store/viewerMockData'
 
 const { TextArea } = Input
@@ -82,6 +82,10 @@ export function PrototypeViewerPage() {
   const [creatingShare, setCreatingShare] = useState(false)
   const [revokingShareId, setRevokingShareId] = useState<string | null>(null)
   const [shareDays, setShareDays] = useState(7)
+  const [shareAccessType, setShareAccessType] = useState<ShareAccessType>('VIEW_ONLY')
+  // 后端只保存 token 的哈希，原始 token 仅在创建时返回一次。
+  // 这里按 shareId 缓存本会话内创建的 token，使这些链接可被再次复制；刷新页面后失效。
+  const [sessionTokens, setSessionTokens] = useState<Record<string, string>>({})
   const [leftCollapsed, setLeftCollapsed] = useState(false)
   const [rightCollapsed, setRightCollapsed] = useState(false)
   const [projectSwitcherOpen, setProjectSwitcherOpen] = useState(false)
@@ -260,11 +264,14 @@ export function PrototypeViewerPage() {
     if (!fileId) return
     setCreatingShare(true)
     try {
-      const link = await createFileShareLink(fileId, shareDays)
+      const link = await createFileShareLink(fileId, shareDays, shareAccessType)
+      setSessionTokens((prev) => ({ ...prev, [link.id]: link.token }))
       await copyShareUrl(buildShareUrl(link.token))
       await loadShareLinks()
-    } catch {
-      message.error('创建分享链接失败')
+    } catch (error) {
+      // 「加入团队」类型要求文件已归属团队，后端会以业务错误码明确拒绝
+      const detail = (error as { response?: { data?: { message?: string } } })?.response?.data?.message
+      message.error(detail ?? '创建分享链接失败')
     } finally {
       setCreatingShare(false)
     }
@@ -1293,18 +1300,52 @@ export function PrototypeViewerPage() {
         )}
       </div>
       <Modal centered width={680} title="分享原型" open={shareOpen} onCancel={() => setShareOpen(false)} footer={<Button onClick={() => setShareOpen(false)}>关闭</Button>}>
-        <p className="hd-share-modal__intro">分享对象登录并接受链接后，可获得该原型的只读预览权限；链接支持 1–30 天有效期。</p>
+        <p className="hd-share-modal__intro">
+          {shareAccessType === 'JOIN_TEAM'
+            ? '分享对象登录或注册后接受链接，将加入该原型所属团队成为普通成员，可查看团队内的项目；链接支持 1–30 天有效期。'
+            : '分享对象登录并接受链接后，可获得该原型的只读预览权限，不会加入团队；链接支持 1–30 天有效期。'}
+        </p>
         <div className="hd-share-modal__create">
+          <Select
+            value={shareAccessType}
+            onChange={setShareAccessType}
+            style={{ minWidth: 168 }}
+            options={[
+              { value: 'VIEW_ONLY', label: '仅查看原型' },
+              { value: 'JOIN_TEAM', label: '可加入本团队' },
+            ]}
+          />
           <Select value={shareDays} onChange={setShareDays} options={[1, 3, 7, 14, 30].map((value) => ({ value, label: `${value} 天后过期` }))} />
           <Button type="primary" className="hd-btn-primary" loading={creatingShare} onClick={() => void createShare()}><ShareAltOutlined /> 创建并复制链接</Button>
         </div>
         <div className="hd-share-modal__list">
           {shareLoading ? <PageLoading label="正在加载分享记录" /> : null}
-          {!shareLoading && shareLinks.length === 0 ? <PageEmpty title="还没有分享链接" description="创建链接后，可将该原型以只读权限分享给已登录用户。" /> : null}
-          {!shareLoading && shareLinks.map((link) => <div key={link.id} className="hd-share-link-row">
-            <div><strong>{link.status === 'active' ? '有效链接' : '已撤销链接'}</strong><span>到期：{new Date(link.expiresAt).toLocaleString('zh-CN', { hour12: false })} · 已接受 {link.acceptedCount} 次</span></div>
-            {link.status === 'active' ? <Button danger size="small" loading={revokingShareId === link.id} onClick={() => void revokeShare(link.id)}>撤销</Button> : null}
-          </div>)}
+          {!shareLoading && shareLinks.length === 0 ? <PageEmpty title="还没有分享链接" description="创建链接后，可将该原型以只读权限分享给已登录用户，或允许对方加入本团队。" /> : null}
+          {!shareLoading && shareLinks.map((link) => {
+            const token = sessionTokens[link.id]
+            const isActive = link.status === 'active'
+            return <div key={link.id} className="hd-share-link-row">
+              <div>
+                <strong>
+                  {isActive ? '有效链接' : '已撤销链接'}
+                  <Tag className="hd-share-link-row__tag" color={link.accessType === 'JOIN_TEAM' ? 'blue' : 'default'}>
+                    {link.accessType === 'JOIN_TEAM' ? <><TeamOutlined /> 可加入团队</> : '仅查看'}
+                  </Tag>
+                </strong>
+                <span>到期：{new Date(link.expiresAt).toLocaleString('zh-CN', { hour12: false })} · 已接受 {link.acceptedCount} 次</span>
+              </div>
+              <div className="hd-share-link-row__actions">
+                {isActive ? (
+                  <Tooltip title={token ? '复制分享链接' : '出于安全，链接地址只在创建时显示一次。如需重新获取，请新建一条链接。'}>
+                    <Button size="small" disabled={!token} onClick={() => token && void copyShareUrl(buildShareUrl(token))}>
+                      <CopyOutlined /> 复制
+                    </Button>
+                  </Tooltip>
+                ) : null}
+                {isActive ? <Button danger size="small" loading={revokingShareId === link.id} onClick={() => void revokeShare(link.id)}>撤销</Button> : null}
+              </div>
+            </div>
+          })}
         </div>
       </Modal>
     </ViewerShellLayout>

@@ -1,4 +1,4 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common'
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common'
 import { SharesService } from './shares.service'
 
 describe('SharesService', () => {
@@ -13,8 +13,9 @@ describe('SharesService', () => {
       prototypeFile: { findUnique: jest.fn() },
       shareLink: { create: jest.fn(), findMany: jest.fn(), findFirst: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
       shareGrant: { upsert: jest.fn() },
+      teamMember: { upsert: jest.fn() },
       operationLog: { create: jest.fn().mockResolvedValue({}) },
-      $transaction: jest.fn(async (callback) => callback({ shareGrant: prisma.shareGrant })),
+      $transaction: jest.fn(async (callback) => callback({ shareGrant: prisma.shareGrant, teamMember: prisma.teamMember })),
     }
     service = new SharesService(prisma, {} as never)
   })
@@ -22,7 +23,7 @@ describe('SharesService', () => {
   afterEach(() => jest.useRealTimers())
 
   const managerFile = { id: 'file-1', uploaderId: 'owner-1', permissions: [] }
-  const activeLink = { id: 'share-1', fileId: 'file-1', tokenHash: 'ignored', status: 'ACTIVE', expiresAt: new Date('2026-07-27T10:00:00.000Z'), createdById: 'owner-1', createdAt: now, revokedAt: null }
+  const activeLink = { id: 'share-1', fileId: 'file-1', tokenHash: 'ignored', status: 'ACTIVE', accessType: 'VIEW_ONLY', expiresAt: new Date('2026-07-27T10:00:00.000Z'), createdById: 'owner-1', createdAt: now, revokedAt: null }
 
   it('creates a high-entropy token but persists only its hash', async () => {
     prisma.prototypeFile.findUnique.mockResolvedValue(managerFile)
@@ -51,8 +52,40 @@ describe('SharesService', () => {
   it('allows acceptance only while the link is active and unexpired', async () => {
     prisma.shareLink.findUnique.mockResolvedValue(activeLink)
     prisma.shareGrant.upsert.mockResolvedValue({})
-    await expect(service.accept('guest-1', 'valid-token')).resolves.toEqual({ fileId: 'file-1' })
+    await expect(service.accept('guest-1', 'valid-token')).resolves.toEqual({ fileId: 'file-1', accessType: 'VIEW_ONLY', joinedTeamId: null })
     expect(prisma.shareGrant.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: { shareLinkId: 'share-1', userId: 'guest-1' } }))
+    // 仅查看类型绝不能把对方加入团队
+    expect(prisma.teamMember.upsert).not.toHaveBeenCalled()
+  })
+
+  it('adds the acceptor as a team member for JOIN_TEAM links', async () => {
+    prisma.shareLink.findUnique.mockResolvedValue({ ...activeLink, accessType: 'JOIN_TEAM' })
+    prisma.prototypeFile.findUnique.mockResolvedValue({ project: { teamId: 'team-9' } })
+    prisma.shareGrant.upsert.mockResolvedValue({})
+    prisma.teamMember.upsert.mockResolvedValue({})
+
+    await expect(service.accept('guest-1', 'valid-token')).resolves.toEqual({ fileId: 'file-1', accessType: 'JOIN_TEAM', joinedTeamId: 'team-9' })
+    expect(prisma.teamMember.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { teamId_userId: { teamId: 'team-9', userId: 'guest-1' } },
+      create: { teamId: 'team-9', userId: 'guest-1', role: 'MEMBER' },
+      update: {},
+    }))
+  })
+
+  it('refuses to create JOIN_TEAM links for files without a team', async () => {
+    prisma.prototypeFile.findUnique
+      .mockResolvedValueOnce(managerFile)          // requireFileManager
+      .mockResolvedValueOnce({ project: null })    // resolveTeamId：未归档文件
+    await expect(service.create('owner-1', 'file-1', 7, 'JOIN_TEAM')).rejects.toBeInstanceOf(BadRequestException)
+    expect(prisma.shareLink.create).not.toHaveBeenCalled()
+  })
+
+  it('defaults new links to VIEW_ONLY access', async () => {
+    prisma.prototypeFile.findUnique.mockResolvedValue(managerFile)
+    prisma.shareLink.create.mockImplementation(async ({ data }: any) => ({ id: 'share-1', ...data, status: 'ACTIVE', createdAt: now, revokedAt: null }))
+    const result = await service.create('owner-1', 'file-1', 7)
+    expect(result.accessType).toBe('VIEW_ONLY')
+    expect(prisma.shareLink.create.mock.calls[0][0].data.accessType).toBe('VIEW_ONLY')
   })
 
   it.each([

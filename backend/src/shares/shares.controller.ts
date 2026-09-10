@@ -20,7 +20,7 @@ export class SharesController {
   @Post('files/:fileId/shares')
   async create(@Req() request: Request, @Param('fileId') fileId: string, @Body() dto: CreateShareLinkDto) {
     const user = await this.auth.getCurrentUser(request.cookies?.[SESSION_COOKIE])
-    return ok(await this.shares.create(user.id, fileId, dto.expiresInDays), '分享链接创建成功')
+    return ok(await this.shares.create(user.id, fileId, dto.expiresInDays, dto.accessType ?? 'VIEW_ONLY'), '分享链接创建成功')
   }
 
   @Delete('files/:fileId/shares/:shareId')

@@ -163,16 +163,20 @@ export type CollaborationAnnotation = {
   comments: CollaborationComment[]
 }
 
+/** 分享链接授予的权限：仅查看 / 接受后加入所属团队 */
+export type ShareAccessType = 'VIEW_ONLY' | 'JOIN_TEAM'
+
 export type ShareLink = {
   id: string
   status: 'active' | 'revoked'
+  accessType: ShareAccessType
   expiresAt: string
   createdAt: string
   revokedAt: string | null
   acceptedCount: number
 }
 
-export type CreatedShareLink = Pick<ShareLink, 'id' | 'status' | 'expiresAt'> & { token: string }
+export type CreatedShareLink = Pick<ShareLink, 'id' | 'status' | 'expiresAt' | 'accessType'> & { token: string }
 
 type ApiResponse<T> = { success: true; data: T; message: string }
 
@@ -278,8 +282,8 @@ export async function getFileShareLinks(fileId: string) {
   return (await http.get<ApiResponse<ShareLink[]>>(`/files/${fileId}/shares`)).data.data
 }
 
-export async function createFileShareLink(fileId: string, expiresInDays: number) {
-  return (await http.post<ApiResponse<CreatedShareLink>>(`/files/${fileId}/shares`, { expiresInDays })).data.data
+export async function createFileShareLink(fileId: string, expiresInDays: number, accessType: ShareAccessType = 'VIEW_ONLY') {
+  return (await http.post<ApiResponse<CreatedShareLink>>(`/files/${fileId}/shares`, { expiresInDays, accessType })).data.data
 }
 
 export async function revokeFileShareLink(fileId: string, shareId: string) {
@@ -287,11 +291,11 @@ export async function revokeFileShareLink(fileId: string, shareId: string) {
 }
 
 export async function inspectShareLink(token: string) {
-  return (await http.get<ApiResponse<{ file: { id: string; name: string; pageCount: number; projectName: string }; expiresAt: string }>>(`/shares/${token}`)).data.data
+  return (await http.get<ApiResponse<{ file: { id: string; name: string; pageCount: number; projectName: string }; expiresAt: string; accessType: ShareAccessType; teamName: string | null }>>(`/shares/${token}`)).data.data
 }
 
 export async function acceptShareLink(token: string) {
-  return (await http.post<ApiResponse<{ fileId: string }>>(`/shares/${token}/accept`)).data.data
+  return (await http.post<ApiResponse<{ fileId: string; accessType: ShareAccessType; joinedTeamId: string | null }>>(`/shares/${token}/accept`)).data.data
 }
 
 export async function deleteTeamMember(teamId: string, userId: string) {

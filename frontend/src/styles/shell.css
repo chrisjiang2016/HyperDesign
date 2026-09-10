@@ -3296,8 +3296,34 @@ a:hover {
 
 .hd-share-link-row strong,
 .hd-share-link-row span { display: block; }
-.hd-share-link-row strong { margin-bottom: 4px; font-size: 14px; color: var(--text-primary); }
+.hd-share-link-row strong {
+  margin-bottom: 4px;
+  font-size: 14px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 .hd-share-link-row span { font-size: 12px; color: var(--text-tertiary); }
+
+/* 权限类型标签（仅查看 / 可加入团队），需重置 antd Tag 的默认外边距 */
+.hd-share-link-row__tag.ant-tag {
+  margin-inline-end: 0;
+  font-weight: 500;
+}
+
+.hd-share-link-row__tag .anticon {
+  margin-inline-end: 4px;
+}
+
+/* 复制 + 撤销按钮组，避免在窄屏下被压缩换行 */
+.hd-share-link-row__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
 
 .hd-share-access-card {
   width: min(100%, 480px);
@@ -3355,6 +3381,9 @@ a:hover {
   .hd-share-modal__create,
   .hd-share-link-row { align-items: stretch; flex-direction: column; }
   .hd-share-modal__create .ant-select { width: 100%; }
+  /* 窄屏下卡片改为纵向，按钮组占满整行并均分宽度 */
+  .hd-share-link-row__actions { width: 100%; }
+  .hd-share-link-row__actions .ant-btn { flex: 1; }
   .hd-share-access-card { padding: 26px 20px; }
 }
 

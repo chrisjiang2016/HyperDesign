@@ -44,6 +44,14 @@ enum ShareLinkStatus {
   REVOKED
 }
 
+/// 分享链接授予的权限类型
+/// VIEW_ONLY：接受后仅获得该原型的只读预览权限
+/// JOIN_TEAM：接受后额外加入该原型所属团队，成为普通成员
+enum ShareAccessType {
+  VIEW_ONLY
+  JOIN_TEAM
+}
+
 model User {
   id                  String              @id @default(cuid())
   username            String              @unique
@@ -186,6 +194,7 @@ model ShareLink {
   fileId       String
   tokenHash    String          @unique
   status       ShareLinkStatus @default(ACTIVE)
+  accessType   ShareAccessType @default(VIEW_ONLY)
   expiresAt    DateTime
   createdById  String
   createdAt    DateTime        @default(now())

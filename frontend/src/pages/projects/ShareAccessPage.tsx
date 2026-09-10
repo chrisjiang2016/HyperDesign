@@ -1,15 +1,17 @@
 import { Button } from 'antd'
-import { CheckCircleOutlined, LoginOutlined, ShareAltOutlined } from '@ant-design/icons'
+import { CheckCircleOutlined, LoginOutlined, ShareAltOutlined, TeamOutlined } from '@ant-design/icons'
 import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AuthLayout } from '@/layouts/AppLayouts'
 import { PageError, PageLoading } from '@/components/common/pagestates'
-import { acceptShareLink, inspectShareLink } from '@/api/workspace'
+import { acceptShareLink, inspectShareLink, type ShareAccessType } from '@/api/workspace'
 import { getCurrentUser } from '@/api/auth'
 
 type ShareInfo = {
   file: { id: string; name: string; pageCount: number; projectName: string }
   expiresAt: string
+  accessType: ShareAccessType
+  teamName: string | null
 }
 
 export function ShareAccessPage() {
@@ -68,11 +70,15 @@ export function ShareAccessPage() {
           <h1>{share.file.name}</h1>
           <p>{share.file.projectName} · {share.file.pageCount} 个页面</p>
           <div className="hd-share-access-card__notice">
-            <CheckCircleOutlined /> 接受后可获得此原型的只读预览权限，不包含评论、编辑或删除权限。
+            {share.accessType === 'JOIN_TEAM' ? (
+              <><TeamOutlined /> 接受后你将加入{share.teamName ? `「${share.teamName}」` : '该原型所属'}团队成为普通成员，可查看团队内的项目与原型。</>
+            ) : (
+              <><CheckCircleOutlined /> 接受后可获得此原型的只读预览权限，不包含评论、编辑或删除权限，也不会加入任何团队。</>
+            )}
           </div>
           <p className="hd-share-access-card__expiry">链接有效至：{new Date(share.expiresAt).toLocaleString('zh-CN', { hour12: false })}</p>
           <Button type="primary" className="hd-btn-primary" block loading={accepting} onClick={() => void accept()}>
-            <LoginOutlined /> 登录并接受分享
+            <LoginOutlined /> {share.accessType === 'JOIN_TEAM' ? '登录并加入团队' : '登录并接受分享'}
           </Button>
         </section>
       ) : null}
