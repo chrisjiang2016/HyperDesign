@@ -2917,13 +2917,7 @@ a:hover {
   position: relative;
 }
 
-.pv-frame-shell--mobile {
-  max-width: 420px;
-}
-
-.pv-frame-shell--tablet {
-  max-width: 900px;
-}
+/* 设备模式的尺寸由 JS 动态控制，不再使用 max-width */
 
 .pv-frame-toolbar {
   height: 44px;

@@ -518,9 +518,34 @@ export function PrototypeViewerPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [inspectMode, sendInspectorState, sendViewerMode])
 
-  const scaleStyle = {
-    transform: `scale(${zoomLevel / 100})`,
-    transformOrigin: 'top center',
+  // 根据设备模式和缩放级别计算实际尺寸
+  const getFrameDimensions = () => {
+    // 基础尺寸（100%时的尺寸）
+    const baseWidths = {
+      mobile: 420,
+      tablet: 900,
+      desktop: 1200,
+    }
+    const baseHeights = {
+      mobile: 720,
+      tablet: 760,
+      desktop: 760,
+    }
+
+    const baseWidth = baseWidths[deviceMode]
+    const baseHeight = baseHeights[deviceMode]
+    const scale = zoomLevel / 100
+
+    return {
+      width: Math.round(baseWidth * scale),
+      height: Math.round(baseHeight * scale),
+    }
+  }
+
+  const frameDimensions = getFrameDimensions()
+  const frameStyle = {
+    width: `${frameDimensions.width}px`,
+    height: `${frameDimensions.height}px`,
   }
 
   const frameClassName = `pv-frame-shell pv-frame-shell--${deviceMode}`
@@ -1190,7 +1215,7 @@ export function PrototypeViewerPage() {
             </div>
           ) : null}
 
-          <div ref={frameShellRef} className={frameClassName} style={scaleStyle}>
+          <div ref={frameShellRef} className={frameClassName} style={frameStyle}>
             <div className="pv-frame-toolbar">
               <div className="pv-frame-dots">
                 <span className="pv-frame-dot" />
