@@ -1234,6 +1234,11 @@ export function PrototypeViewerPage() {
                   src={activePreviewUrl}
                   title={activePage?.name ?? viewerFile.title}
                   sandbox="allow-same-origin allow-scripts"
+                  style={{
+                    transform: `scale(${zoomLevel / 100})`,
+                    width: `${(100 / (zoomLevel / 100))}%`,
+                    height: `${(100 / (zoomLevel / 100))}%`,
+                  }}
                   onLoad={() => {
                     try {
                       const iframe = iframeRef.current
