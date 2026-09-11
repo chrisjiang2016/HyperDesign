@@ -33,24 +33,23 @@ if [[ "$LOCAL_REVISION" != "$GITHUB_REVISION" ]]; then
   exit 1
 fi
 
-SOURCE_ARCHIVE="deploy-src-${LOCAL_REVISION:0:12}.tar.gz"
 GIT_BUNDLE="hyperdesign-main-${LOCAL_REVISION:0:12}.bundle"
 cleanup() {
-  rm -f "$SOURCE_ARCHIVE" "$GIT_BUNDLE"
+  rm -f "$GIT_BUNDLE"
 }
 trap cleanup EXIT
 
 echo "目标提交: $LOCAL_REVISION"
-echo "创建源码包与完整 Git bundle..."
-git archive "$LOCAL_REVISION" backend frontend infra deploy-workbench-main.sh | gzip > "$SOURCE_ARCHIVE"
+echo "创建完整 Git bundle（含源码与提交历史）..."
 git bundle create "$GIT_BUNDLE" --all
 git bundle verify "$GIT_BUNDLE" >/dev/null
 
-echo "上传离线产物到服务器..."
-"$WORKBENCH" upload -f "${PROJECT_ROOT//\//\\}\\$SOURCE_ARCHIVE" "$SERVER_ROOT/" --instance-id "$INSTANCE_ID" --region "$REGION"
+echo "上传离线提交包到服务器..."
 "$WORKBENCH" upload -f "${PROJECT_ROOT//\//\\}\\$GIT_BUNDLE" "$SERVER_ROOT/" --instance-id "$INSTANCE_ID" --region "$REGION"
 
-REMOTE_COMMAND="set -e; cd $SERVER_ROOT; target=$LOCAL_REVISION; test -z \"\$(git status --porcelain --untracked-files=no)\" || { echo '服务器工作区不干净；请先完成备份和对齐，拒绝覆盖。' >&2; exit 1; }; git fetch $GIT_BUNDLE refs/heads/main:refs/remotes/offline/github-main; test \"\$(git rev-parse refs/remotes/offline/github-main)\" = \"\$target\"; git checkout --detach \$target; git branch -f main \$target; git checkout main; git reset --hard \$target; tar -xzf $SOURCE_ARCHIVE; cd infra; docker compose build api web; docker compose run --rm --no-deps --entrypoint sh api -c 'npx prisma migrate deploy'; docker compose up -d api web; sleep 8; curl -fsS http://localhost:8080/api/health; test \"\$(git -C $SERVER_ROOT rev-parse HEAD)\" = \"\$target\"; test -z \"\$(git -C $SERVER_ROOT status --porcelain)\"; echo; echo \"部署完成，服务器提交: \$target\""
+# Git bundle 已包含完整源码；只使用 git reset 切换版本，避免 git archive 的 LF 行尾
+# 覆盖服务器检出文件后被误判为大批工作区改动。
+REMOTE_COMMAND="set -e; cd $SERVER_ROOT; target=$LOCAL_REVISION; test -z \"\$(git status --porcelain --untracked-files=no)\" || { echo '服务器工作区不干净；请先完成备份和对齐，拒绝覆盖。' >&2; exit 1; }; git fetch $GIT_BUNDLE refs/heads/main:refs/remotes/offline/github-main; test \"\$(git rev-parse refs/remotes/offline/github-main)\" = \"\$target\"; git checkout --detach \$target; git branch -f main \$target; git checkout main; git reset --hard \$target; cd infra; docker compose build api web; docker compose run --rm --no-deps --entrypoint sh api -c 'npx prisma migrate deploy'; docker compose up -d api web; sleep 8; curl -fsS http://localhost:8080/api/health; test \"\$(git -C $SERVER_ROOT rev-parse HEAD)\" = \"\$target\"; test -z \"\$(git -C $SERVER_ROOT status --porcelain)\"; echo; echo \"部署完成，服务器提交: \$target\""
 
 echo "导入 Git 历史、切换服务器提交并重建服务..."
 "$WORKBENCH" exec --instance-id "$INSTANCE_ID" --region "$REGION" --command "$REMOTE_COMMAND" --timeout 480
