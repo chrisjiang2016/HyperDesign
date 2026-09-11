@@ -14,7 +14,9 @@ export interface ParsedHtmlPage {
 // Upload bytes are limited at the HTTP boundary. These limits cap the expanded
 // archive as well, preventing a small compressed ZIP from exhausting disk or
 // worker time during extraction.
-const MAX_ARCHIVE_ENTRIES = 10_000
+// Axure exports commonly contain thousands of image/state resources. Keep the
+// manifest limit high enough for real exports while retaining bounded extraction.
+const MAX_ARCHIVE_ENTRIES = 25_000
 const MAX_SINGLE_ENTRY_BYTES = 100 * 1024 * 1024
 const MAX_UNCOMPRESSED_BYTES = 500 * 1024 * 1024
 

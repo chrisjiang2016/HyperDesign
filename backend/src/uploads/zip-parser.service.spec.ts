@@ -46,6 +46,15 @@ describe('ZipParserService path safety', () => {
     ])).not.toThrow()
   })
 
+  it('accepts large Axure-style manifests below the configured entry limit', () => {
+    const entries = Array.from({ length: 15_779 }, (_, index) => ({
+      path: `images/u${index}.png`,
+      type: 'File',
+      uncompressedSize: 1_024,
+    }))
+    expect(() => service.assertSafeArchive(entries)).not.toThrow()
+  })
+
   it('scans a standalone HTML source as one entry page', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'hyperdesign-html-'))
     try {
