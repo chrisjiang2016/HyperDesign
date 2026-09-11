@@ -647,9 +647,11 @@ textarea {
 }
 
 .hd-viewer-sidebar {
+  display: flex;
+  flex-direction: column;
   background: var(--bg-surface);
-  min-height: calc(100vh - var(--topbar-height));
-  overflow: auto;
+  height: calc(100vh - var(--topbar-height));
+  overflow: hidden;
   transition: opacity var(--transition-fast), border-color var(--transition-fast);
 }
 
