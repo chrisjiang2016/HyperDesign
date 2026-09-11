@@ -545,7 +545,8 @@ export function PrototypeViewerPage() {
   const frameDimensions = getFrameDimensions()
   const frameStyle = {
     width: `${frameDimensions.width}px`,
-    height: `${frameDimensions.height}px`,
+    // frame shell 还包含 44px 浏览器工具栏，剩余高度全部给原型视口。
+    height: `${frameDimensions.height + 44}px`,
   }
 
   const frameClassName = `pv-frame-shell pv-frame-shell--${deviceMode}`
@@ -1234,11 +1235,6 @@ export function PrototypeViewerPage() {
                   src={activePreviewUrl}
                   title={activePage?.name ?? viewerFile.title}
                   sandbox="allow-same-origin allow-scripts"
-                  style={{
-                    transform: `scale(${zoomLevel / 100})`,
-                    width: `${(100 / (zoomLevel / 100))}%`,
-                    height: `${(100 / (zoomLevel / 100))}%`,
-                  }}
                   onLoad={() => {
                     try {
                       const iframe = iframeRef.current

@@ -2907,7 +2907,7 @@ a:hover {
 
 .pv-frame-shell {
   width: 100%;
-  /* 移除 max-width 限制，允许缩放时宽度也能扩大 */
+  /* 缩放由 JS 调整真实框体尺寸，允许横向和纵向同时扩大。 */
   margin: 0 auto;
   background: #f1f5f9;
   border: 1px solid var(--border-light);
@@ -2915,6 +2915,9 @@ a:hover {
   padding: 18px;
   box-shadow: var(--shadow-md);
   position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
 }
 
 /* 设备模式的尺寸由 JS 动态控制，不再使用 max-width */
@@ -2961,17 +2964,13 @@ a:hover {
 
 .pv-frame-body {
   position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
   background: #fff;
   border: 1px solid var(--border-light);
   border-radius: 0 0 14px 14px;
   overflow: hidden;
-  min-height: 760px;
-  height: 760px;
-}
-
-.pv-frame-shell--mobile .pv-frame-body {
-  min-height: 720px;
-  height: 720px;
 }
 
 .pv-live-frame {
