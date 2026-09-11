@@ -99,13 +99,14 @@ storage/
 ### Git 状态
 - **仓库：** https://github.com/chrisjiang2016/HyperDesign
 - **分支：** main
-- **最新提交：** `927caf5 docs: refresh redis deployment notes`
-- **工作区状态：** 存在未提交改动（上传、存储、当前用户、团队页、项目页等业务代码修改）
+- **最新提交：** `d20f94c chore(deploy): 新增分享链接「随时可复制」部署脚本`
+- **三端对齐：** 2026-09-11 已通过离线 Git bundle 将服务器 Git 历史与 GitHub `main` 对齐；本地、GitHub、服务器 HEAD 均为 `d20f94c09df5de8d0a45552ec8197483c9b55ae4`，服务器工作区干净。
 
 ### 部署状态
-- **内网测试环境：** http://192.168.1.231:8081
-- **健康状态：** MySQL ok, Redis ok（截至 2026-08-24）
-- **已知问题：** 存储目录权限问题已识别，需要修复 `STORAGE_HOST_PATH` 权限
+- **线上环境：** http://47.114.41.30:8080/
+- **部署方式：** 阿里云 Workbench CLI，经离线 Git bundle / 源码包上传，不依赖服务器直连 GitHub。
+- **健康状态：** API、MySQL、Redis 均为 `ok`；前端 HTTP 200（截至 2026-09-11）。
+- **关键功能：** 已包含超级管理员全局数据权限与账号管理、分享链接权限类型、分享链接随时复制与历史链接重新生成。
 
 ---
 
