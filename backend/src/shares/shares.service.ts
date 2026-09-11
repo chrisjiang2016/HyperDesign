@@ -27,6 +27,20 @@ export class SharesService {
     return { id: link.id, token, expiresAt: link.expiresAt, status: 'active' as const, accessType: link.accessType }
   }
 
+  async rotate(userId: string, fileId: string, shareId: string) {
+    await this.requireFileManager(userId, fileId)
+    const link = await this.prisma.shareLink.findFirst({ where: { id: shareId, fileId } })
+    if (!link) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '分享链接不存在' })
+    // 重新生成令牌：旧链接（tokenHash）立即失效；新 token 明文入库以便随时复制（有意为之的安全取舍）
+    const token = randomBytes(32).toString('base64url')
+    const updated = await this.prisma.shareLink.update({
+      where: { id: shareId },
+      data: { token, tokenHash: hashToken(token), status: 'ACTIVE', revokedAt: null },
+    })
+    await this.log(userId, 'SHARE_LINK_ROTATED', 'share_link', shareId)
+    return this.serialize(updated)
+  }
+
   async list(userId: string, fileId: string) {
     await this.requireFileManager(userId, fileId)
     const links = await this.prisma.shareLink.findMany({ where: { fileId }, include: { _count: { select: { grants: true } } }, orderBy: { createdAt: 'desc' } })

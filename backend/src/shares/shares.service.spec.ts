@@ -124,4 +124,29 @@ describe('SharesService', () => {
     await expect(service.revoke('owner-1', 'file-1', 'share-1')).resolves.toMatchObject({ status: 'revoked' })
     expect(prisma.operationLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: 'SHARE_LINK_REVOKED', targetId: 'share-1' }) }))
   })
+
+  it('rotates a link: regenerates token, invalidates the old one, returns new plaintext token', async () => {
+    prisma.prototypeFile.findUnique.mockResolvedValue(managerFile)
+    prisma.shareLink.findFirst.mockResolvedValue(activeLink)
+    prisma.shareLink.update.mockImplementation(async ({ data }: any) => ({ ...activeLink, ...data }))
+
+    const result = await service.rotate('owner-1', 'file-1', 'share-1')
+    expect(result.token).toMatch(/^[A-Za-z0-9_-]{40,}$/)
+    expect(result.status).toBe('active')
+    const update = prisma.shareLink.update.mock.calls[0][0].data
+    expect(update.token).toBe(result.token)
+    // 旧哈希失效：新 token 的哈希与旧值不同
+    expect(update.tokenHash).toMatch(/^[a-f0-9]{64}$/)
+    expect(update.tokenHash).not.toBe('ignored')
+    expect(update.status).toBe('ACTIVE')
+    expect(update.revokedAt).toBeNull()
+    expect(prisma.operationLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: 'SHARE_LINK_ROTATED', targetId: 'share-1' }) }))
+  })
+
+  it('fails to rotate a non-existent link', async () => {
+    prisma.prototypeFile.findUnique.mockResolvedValue(managerFile)
+    prisma.shareLink.findFirst.mockResolvedValue(null)
+    await expect(service.rotate('owner-1', 'file-1', 'missing')).rejects.toBeInstanceOf(NotFoundException)
+    expect(prisma.shareLink.update).not.toHaveBeenCalled()
+  })
 })
