@@ -8,9 +8,10 @@ import { StorageModule } from './storage/storage.module'
 import { UploadsModule } from './uploads/uploads.module'
 import { CollaborationModule } from './collaboration/collaboration.module'
 import { SharesModule } from './shares/shares.module'
+import { TeamInvitesModule } from './team-invites/team-invites.module'
 
 @Module({
-  imports: [RedisModule, RateLimitModule, PrismaModule, StorageModule, AuthModule, UploadsModule, CollaborationModule, SharesModule],
+  imports: [RedisModule, RateLimitModule, PrismaModule, StorageModule, AuthModule, UploadsModule, CollaborationModule, SharesModule, TeamInvitesModule],
   controllers: [HealthController],
 })
 export class AppModule {}

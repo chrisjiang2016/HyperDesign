@@ -303,6 +303,25 @@ export async function acceptShareLink(token: string) {
   return (await http.post<ApiResponse<{ fileId: string; accessType: ShareAccessType; joinedTeamId: string | null }>>(`/shares/${token}/accept`)).data.data
 }
 
+export type CreatedTeamInvite = {
+  id: string
+  token: string
+  expiresAt: string
+  status: 'active'
+}
+
+export async function createTeamInvite(teamId: string) {
+  return (await http.post<ApiResponse<CreatedTeamInvite>>(`/teams/${teamId}/invites`)).data.data
+}
+
+export async function inspectTeamInvite(token: string) {
+  return (await http.get<ApiResponse<{ team: { id: string; name: string; description: string }; expiresAt: string }>>(`/team-invites/${token}`)).data.data
+}
+
+export async function acceptTeamInvite(token: string) {
+  return (await http.post<ApiResponse<{ teamId: string; teamName: string; alreadyMember: boolean }>>(`/team-invites/${token}/accept`)).data.data
+}
+
 export async function deleteTeamMember(teamId: string, userId: string) {
   return (await http.delete<ApiResponse<null>>(`/teams/${teamId}/members/${userId}`)).data.data
 }

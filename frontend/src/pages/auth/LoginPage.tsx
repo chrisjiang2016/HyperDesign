@@ -44,7 +44,7 @@ export function LoginPage() {
         <div className="hd-auth-row"><Form.Item name="remember" valuePropName="checked" noStyle><Checkbox>记住我</Checkbox></Form.Item><Link to="/forgot-password" className="hd-auth-link">忘记密码？</Link></div>
         <Button type="primary" htmlType="submit" size="large" block loading={submitting} className="hd-auth-primary-btn">登录</Button>
       </Form> : <Alert type="info" showIcon message="手机号登录" description="V1 暂不支持短信验证码，请使用账号密码登录。" style={{ marginBottom: 16 }} />}
-      <div className="hd-auth-prompt">还没有账号？<Link to="/register">立即注册</Link></div>
+      <div className="hd-auth-prompt">还没有账号？<Link to="/register" state={{ from }}>立即注册</Link></div>
     </div>
   </div></AuthLayout>
 }

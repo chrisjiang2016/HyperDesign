@@ -8,6 +8,7 @@ const RegisterPage = lazy(() => import('@/pages/auth/RegisterPage').then(({ Regi
 const ForgotPasswordPage = lazy(() => import('@/pages/auth/ForgotPasswordPage').then(({ ForgotPasswordPage }) => ({ default: ForgotPasswordPage })))
 const TeamsPage = lazy(() => import('@/pages/teams/TeamsPage').then(({ TeamsPage }) => ({ default: TeamsPage })))
 const TeamDetailPage = lazy(() => import('@/pages/teams/TeamDetailPage').then(({ TeamDetailPage }) => ({ default: TeamDetailPage })))
+const TeamInviteAccessPage = lazy(() => import('@/pages/teams/TeamInviteAccessPage').then(({ TeamInviteAccessPage }) => ({ default: TeamInviteAccessPage })))
 const ProjectDetailPage = lazy(() => import('@/pages/projects/ProjectDetailPage').then(({ ProjectDetailPage }) => ({ default: ProjectDetailPage })))
 const PrototypeViewerPage = lazy(() => import('@/pages/projects/PrototypeViewerPage').then(({ PrototypeViewerPage }) => ({ default: PrototypeViewerPage })))
 const ShareAccessPage = lazy(() => import('@/pages/projects/ShareAccessPage').then(({ ShareAccessPage }) => ({ default: ShareAccessPage })))
@@ -23,6 +24,7 @@ export const router = createBrowserRouter([
   { path: '/register', element: withRouteLoader(<RegisterPage />) },
   { path: '/forgot-password', element: withRouteLoader(<ForgotPasswordPage />) },
   { path: '/teams/:teamId', element: protectedRoute(<TeamDetailPage />) },
+  { path: '/team-invites/:token', element: withRouteLoader(<TeamInviteAccessPage />) },
   { path: '/projects/:projectId', element: protectedRoute(<ProjectDetailPage />) },
   { path: '/files/:fileId/preview', element: protectedRoute(<PrototypeViewerPage />) },
   { path: '/shares/:token', element: withRouteLoader(<ShareAccessPage />) },

@@ -1,5 +1,5 @@
 import { Button, Checkbox, Form, Input, message } from 'antd'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useMemo, useState } from 'react'
 import { AxiosError } from 'axios'
 import { AuthLayout } from '@/layouts/AppLayouts'
@@ -10,10 +10,10 @@ interface RegisterFormValues { username: string; confirmUsername: string; passwo
 function getPasswordStrength(password: string) { const score = Number(password.length >= 6) + Number(/[A-Za-z]/.test(password)) + Number(/\d/.test(password)) + Number(password.length >= 12); return { score, label: ['弱', '弱', '中等', '强', '很强'][score] } }
 
 export function RegisterPage() {
-  const navigate = useNavigate(); const [form] = Form.useForm<RegisterFormValues>(); const [password, setPassword] = useState(''); const [submitting, setSubmitting] = useState(false); const [error, setError] = useState<string | null>(null); const strength = useMemo(() => getPasswordStrength(password), [password])
+  const navigate = useNavigate(); const location = useLocation(); const from = (location.state as { from?: string } | null)?.from || '/'; const [form] = Form.useForm<RegisterFormValues>(); const [password, setPassword] = useState(''); const [submitting, setSubmitting] = useState(false); const [error, setError] = useState<string | null>(null); const strength = useMemo(() => getPasswordStrength(password), [password])
   const onFinish = async (values: RegisterFormValues) => {
     setSubmitting(true); setError(null)
-    try { await register({ username: values.username, confirmUsername: values.confirmUsername, password: values.password }); message.success('注册成功，请登录'); navigate('/login', { replace: true }) }
+    try { await register({ username: values.username, confirmUsername: values.confirmUsername, password: values.password }); message.success('注册成功，请登录'); navigate('/login', { replace: true, state: { from } }) }
     catch (cause) { setError((cause as AxiosError<{ message?: string }>).response?.data?.message || '注册失败，请稍后重试') }
     finally { setSubmitting(false) }
   }

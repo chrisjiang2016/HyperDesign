@@ -23,6 +23,11 @@ enum TeamRole {
   MEMBER
 }
 
+enum TeamInviteStatus {
+  ACTIVE
+  REVOKED
+}
+
 enum ProjectPermissionLevel {
   VIEW
   EDIT
@@ -242,7 +247,22 @@ model Team {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   members     TeamMember[]
+  invites     TeamInvite[]
   projects    Project[]
+}
+
+model TeamInvite {
+  id          String           @id @default(cuid())
+  teamId      String
+  tokenHash   String           @unique
+  status      TeamInviteStatus @default(ACTIVE)
+  expiresAt   DateTime
+  createdById String
+  createdAt   DateTime         @default(now())
+  revokedAt   DateTime?
+  team        Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId, status, expiresAt])
 }
 
 model TeamMember {

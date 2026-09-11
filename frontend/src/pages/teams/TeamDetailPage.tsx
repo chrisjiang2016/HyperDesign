@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Button, Form, Input, Modal, message } from 'antd'
 import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined, UserAddOutlined } from '@ant-design/icons'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { createProject, deleteTeam, deleteTeamMember, getTeamDetail, updateTeam, type TeamDetail } from '@/api/workspace'
+import { createProject, createTeamInvite, deleteTeam, deleteTeamMember, getTeamDetail, updateTeam, type TeamDetail } from '@/api/workspace'
 import { AppShellLayout } from '@/layouts/AppLayouts'
 import { RightPanel } from '@/components/workspace/RightPanel'
 import { PageEmpty, PageError, PageLoading } from '@/components/common/pagestates'
@@ -26,6 +26,9 @@ export function TeamDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [projectOpen, setProjectOpen] = useState(false)
   const [teamEditOpen, setTeamEditOpen] = useState(false)
+  const [inviteOpen, setInviteOpen] = useState(false)
+  const [inviteUrl, setInviteUrl] = useState('')
+  const [creatingInvite, setCreatingInvite] = useState(false)
   const [creating, setCreating] = useState(false)
   const [updatingTeam, setUpdatingTeam] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -120,6 +123,29 @@ export function TeamDetailPage() {
     })
   }
 
+  const handleCreateInvite = async () => {
+    if (!team) return
+    setCreatingInvite(true)
+    try {
+      const invite = await createTeamInvite(team.id)
+      setInviteUrl(`${window.location.origin}/team-invites/${invite.token}`)
+      setInviteOpen(true)
+    } catch (error: any) {
+      message.error(error.response?.data?.message || '创建邀请链接失败，请稍后重试')
+    } finally {
+      setCreatingInvite(false)
+    }
+  }
+
+  const copyInviteUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteUrl)
+      message.success('邀请链接已复制')
+    } catch {
+      message.error('复制失败，请手动复制链接')
+    }
+  }
+
   const handleDeleteMember = (memberId: string, memberName: string) => {
     if (!team) return
     Modal.confirm({
@@ -162,7 +188,7 @@ export function TeamDetailPage() {
             <div className="hd-hero-actions">
               {team.roleLabel === '管理员' ? <Button className="hd-btn-secondary" onClick={openTeamEdit}><EditOutlined /> 编辑名称</Button> : null}
               <Button type="primary" className="hd-btn-primary" disabled={team.roleLabel !== '管理员'} onClick={() => setProjectOpen(true)}><PlusOutlined /> 新建项目</Button>
-              <Button className="hd-btn-secondary" disabled title="成员邀请将在协作权限完善后开放"><UserAddOutlined /> 邀请成员</Button>
+              <Button className="hd-btn-secondary" loading={creatingInvite} disabled={team.roleLabel !== '管理员'} onClick={() => void handleCreateInvite()}><UserAddOutlined /> 邀请成员</Button>
               {team.roleLabel === '管理员' ? <Button danger loading={deleting} onClick={handleDeleteTeam}><DeleteOutlined /> 删除团队</Button> : null}
             </div>
           </section>
@@ -197,6 +223,10 @@ export function TeamDetailPage() {
       </div>
       <Modal centered title="新建项目" open={projectOpen} onCancel={() => setProjectOpen(false)} onOk={handleCreateProject} okText="创建" cancelText="取消" okButtonProps={{ className: 'hd-btn-primary', loading: creating }}>
         <Form form={form} layout="vertical" requiredMark={false}><Form.Item label="项目名称" name="name" rules={[{ required: true, message: '请输入项目名称' }]}><Input placeholder="例如：会员中心改版" /></Form.Item><Form.Item label="项目描述" name="description"><Input.TextArea rows={3} placeholder="可选，简述协作目标" /></Form.Item></Form>
+      </Modal>
+      <Modal centered title="邀请成员" open={inviteOpen} onCancel={() => setInviteOpen(false)} footer={<Button type="primary" className="hd-btn-primary" onClick={() => void copyInviteUrl()} disabled={!inviteUrl}>复制邀请链接</Button>}>
+        <p>将以下链接发送给成员。对方打开链接后登录或注册，即可加入「{team?.name}」。链接有效期为 7 天。</p>
+        <Input value={inviteUrl} readOnly onFocus={(event) => event.target.select()} aria-label="团队邀请链接" />
       </Modal>
       <Modal centered title="编辑团队名称" open={teamEditOpen} onCancel={() => setTeamEditOpen(false)} onOk={handleUpdateTeam} okText="保存" cancelText="取消" okButtonProps={{ className: 'hd-btn-primary', loading: updatingTeam }}>
         <Form form={teamEditForm} layout="vertical" requiredMark={false}>
