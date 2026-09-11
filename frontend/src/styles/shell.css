@@ -2700,9 +2700,14 @@ a:hover {
 .pv-right {
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - var(--topbar-height));
+  height: 100%;
+  min-height: 0;
   padding: 22px 16px;
   gap: 0;
+}
+
+.pv-left {
+  overflow: hidden;
 }
 
 .pv-right {
@@ -2724,9 +2729,24 @@ a:hover {
   margin-bottom: 10px;
 }
 
+.pv-sidebar-pages {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .pv-page-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   display: grid;
+  grid-auto-rows: max-content;
+  align-content: start;
   gap: 8px;
+  padding-right: 4px;
 }
 
 .pv-page-item {

@@ -789,7 +789,7 @@ export function PrototypeViewerPage() {
         </div>
       </div>
 
-      <div className="pv-sidebar-group">
+      <div className="pv-sidebar-group pv-sidebar-pages">
         <div className="pv-sidebar-label">原型内页面</div>
         <div className="pv-page-list">
           {viewerFile.pages.map((page) => {
