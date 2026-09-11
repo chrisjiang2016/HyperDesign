@@ -195,6 +195,7 @@ model ShareLink {
   tokenHash    String          @unique
   status       ShareLinkStatus @default(ACTIVE)
   accessType   ShareAccessType @default(VIEW_ONLY)
+  token        String          @default("")
   expiresAt    DateTime
   createdById  String
   createdAt    DateTime        @default(now())

@@ -37,6 +37,8 @@ describe('SharesService', () => {
     const persisted = prisma.shareLink.create.mock.calls[0][0].data
     expect(persisted.tokenHash).toMatch(/^[a-f0-9]{64}$/)
     expect(persisted.tokenHash).not.toBe(result.token)
+    // 产品决策：token 明文持久化，供前端随时复制
+    expect(persisted.token).toBe(result.token)
     expect(persisted.expiresAt).toEqual(new Date('2026-07-27T10:00:00.000Z'))
   })
 
@@ -62,11 +64,10 @@ describe('SharesService', () => {
     expect(workspace.isSuperAdmin).not.toHaveBeenCalled()
   })
 
-  it('does not expose the token in share link listing', async () => {
+  it('returns the plaintext token in share link listing for client-side copy', async () => {
     prisma.prototypeFile.findUnique.mockResolvedValue(managerFile)
-    prisma.shareLink.findMany.mockResolvedValue([{ ...activeLink, _count: { grants: 2 } }])
-    await expect(service.list('owner-1', 'file-1')).resolves.toEqual([expect.objectContaining({ id: 'share-1', acceptedCount: 2 })])
-    await expect(service.list('owner-1', 'file-1')).resolves.not.toEqual([expect.objectContaining({ token: expect.anything() })])
+    prisma.shareLink.findMany.mockResolvedValue([{ ...activeLink, token: 'plain-token-value', _count: { grants: 2 } }])
+    await expect(service.list('owner-1', 'file-1')).resolves.toEqual([expect.objectContaining({ id: 'share-1', token: 'plain-token-value', acceptedCount: 2 })])
   })
 
   it('allows acceptance only while the link is active and unexpired', async () => {

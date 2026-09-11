@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Input, App as AntdApp, Modal, Select, Tag, Tooltip } from 'antd'
-import { CommentOutlined, CopyOutlined, ExportOutlined, LeftOutlined, MinusOutlined, PlusOutlined, RightOutlined, ShareAltOutlined, TeamOutlined, ToolOutlined } from '@ant-design/icons'
+import { CommentOutlined, CopyOutlined, ExportOutlined, LeftOutlined, MinusOutlined, PlusOutlined, ReloadOutlined, RightOutlined, ShareAltOutlined, TeamOutlined, ToolOutlined } from '@ant-design/icons'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ViewerShellLayout } from '@/layouts/AppLayouts'
 import { NavTree } from '@/components/navigation/NavTree'
 import { PageEmpty, PageError, PageLoading } from '@/components/common/pagestates'
-import { createAnnotationComment, createFileAnnotation, createFileShareLink, getFileAnnotations, getFileShareLinks, getFirstPreview, getNavTeamsProjects, getProjectDetail, getProjectFiles, getPrototypePages, revokeFileShareLink, type CollaborationAnnotation, type FilePermission, type NavTeam, type ProjectDetail, type PrototypePage, type ShareAccessType, type ShareLink } from '@/api/workspace'
+import { createAnnotationComment, createFileAnnotation, createFileShareLink, getFileAnnotations, getFileShareLinks, getFirstPreview, getNavTeamsProjects, getProjectDetail, getProjectFiles, getPrototypePages, revokeFileShareLink, rotateFileShareLink, type CollaborationAnnotation, type FilePermission, type NavTeam, type ProjectDetail, type PrototypePage, type ShareAccessType, type ShareLink } from '@/api/workspace'
 import type { ViewerMarker, ViewerComment, ViewerAnnotationPayload } from '@/store/viewerMockData'
 
 const { TextArea } = Input
@@ -83,9 +83,7 @@ export function PrototypeViewerPage() {
   const [revokingShareId, setRevokingShareId] = useState<string | null>(null)
   const [shareDays, setShareDays] = useState(7)
   const [shareAccessType, setShareAccessType] = useState<ShareAccessType>('VIEW_ONLY')
-  // 后端只保存 token 的哈希，原始 token 仅在创建时返回一次。
-  // 这里按 shareId 缓存本会话内创建的 token，使这些链接可被再次复制；刷新页面后失效。
-  const [sessionTokens, setSessionTokens] = useState<Record<string, string>>({})
+  const [rotatingShareId, setRotatingShareId] = useState<string | null>(null)
   const [leftCollapsed, setLeftCollapsed] = useState(false)
   const [rightCollapsed, setRightCollapsed] = useState(false)
   const [projectSwitcherOpen, setProjectSwitcherOpen] = useState(false)
@@ -265,7 +263,6 @@ export function PrototypeViewerPage() {
     setCreatingShare(true)
     try {
       const link = await createFileShareLink(fileId, shareDays, shareAccessType)
-      setSessionTokens((prev) => ({ ...prev, [link.id]: link.token }))
       await copyShareUrl(buildShareUrl(link.token))
       await loadShareLinks()
     } catch (error) {
@@ -288,6 +285,21 @@ export function PrototypeViewerPage() {
       message.error('撤销分享链接失败')
     } finally {
       setRevokingShareId(null)
+    }
+  }
+
+  const rotateShare = async (shareId: string) => {
+    if (!fileId) return
+    setRotatingShareId(shareId)
+    try {
+      const link = await rotateFileShareLink(fileId, shareId)
+      await copyShareUrl(buildShareUrl(link.token))
+      await loadShareLinks()
+      message.success('已生成新的可复制链接（旧链接已失效）')
+    } catch {
+      message.error('重新生成分享链接失败')
+    } finally {
+      setRotatingShareId(null)
     }
   }
 
@@ -1322,7 +1334,7 @@ export function PrototypeViewerPage() {
           {shareLoading ? <PageLoading label="正在加载分享记录" /> : null}
           {!shareLoading && shareLinks.length === 0 ? <PageEmpty title="还没有分享链接" description="创建链接后，可将该原型以只读权限分享给已登录用户，或允许对方加入本团队。" /> : null}
           {!shareLoading && shareLinks.map((link) => {
-            const token = sessionTokens[link.id]
+            const token = link.token
             const isActive = link.status === 'active'
             return <div key={link.id} className="hd-share-link-row">
               <div>
@@ -1336,9 +1348,16 @@ export function PrototypeViewerPage() {
               </div>
               <div className="hd-share-link-row__actions">
                 {isActive ? (
-                  <Tooltip title={token ? '复制分享链接' : '出于安全，链接地址只在创建时显示一次。如需重新获取，请新建一条链接。'}>
+                  <Tooltip title={token ? '复制分享链接' : '该链接未保存可复制令牌，请点击「重新生成」获取新的可复制链接（旧链接将失效）。'}>
                     <Button size="small" disabled={!token} onClick={() => token && void copyShareUrl(buildShareUrl(token))}>
                       <CopyOutlined /> 复制
+                    </Button>
+                  </Tooltip>
+                ) : null}
+                {isActive ? (
+                  <Tooltip title="生成新的可复制链接，旧链接将立即失效">
+                    <Button size="small" loading={rotatingShareId === link.id} onClick={() => void rotateShare(link.id)}>
+                      <ReloadOutlined /> 重新生成
                     </Button>
                   </Tooltip>
                 ) : null}

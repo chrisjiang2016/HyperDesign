@@ -174,6 +174,7 @@ export type ShareLink = {
   createdAt: string
   revokedAt: string | null
   acceptedCount: number
+  token: string
 }
 
 export type CreatedShareLink = Pick<ShareLink, 'id' | 'status' | 'expiresAt' | 'accessType'> & { token: string }
@@ -288,6 +289,10 @@ export async function createFileShareLink(fileId: string, expiresInDays: number,
 
 export async function revokeFileShareLink(fileId: string, shareId: string) {
   return (await http.delete<ApiResponse<ShareLink>>(`/files/${fileId}/shares/${shareId}`)).data.data
+}
+
+export async function rotateFileShareLink(fileId: string, shareId: string) {
+  return (await http.post<ApiResponse<ShareLink>>(`/files/${fileId}/shares/${shareId}/rotate`)).data.data
 }
 
 export async function inspectShareLink(token: string) {

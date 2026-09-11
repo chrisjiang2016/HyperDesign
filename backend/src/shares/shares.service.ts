@@ -22,7 +22,7 @@ export class SharesService {
     }
     const token = randomBytes(32).toString('base64url')
     const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000)
-    const link = await this.prisma.shareLink.create({ data: { fileId, tokenHash: hashToken(token), expiresAt, createdById: userId, accessType } })
+    const link = await this.prisma.shareLink.create({ data: { fileId, tokenHash: hashToken(token), token, expiresAt, createdById: userId, accessType } })
     await this.log(userId, 'SHARE_LINK_CREATED', 'share_link', link.id, `file=${fileId};expiresAt=${expiresAt.toISOString()};accessType=${accessType}`)
     return { id: link.id, token, expiresAt: link.expiresAt, status: 'active' as const, accessType: link.accessType }
   }
@@ -100,8 +100,8 @@ export class SharesService {
     return link
   }
 
-  private serialize(link: { id: string; status: string; accessType: string; expiresAt: Date; createdAt: Date; revokedAt: Date | null; _count?: { grants: number } }) {
-    return { id: link.id, status: link.status.toLowerCase(), accessType: link.accessType, expiresAt: link.expiresAt, createdAt: link.createdAt, revokedAt: link.revokedAt, acceptedCount: link._count?.grants ?? 0 }
+  private serialize(link: { id: string; status: string; accessType: string; expiresAt: Date; createdAt: Date; revokedAt: Date | null; token: string; _count?: { grants: number } }) {
+    return { id: link.id, status: link.status.toLowerCase(), accessType: link.accessType, expiresAt: link.expiresAt, createdAt: link.createdAt, revokedAt: link.revokedAt, token: link.token, acceptedCount: link._count?.grants ?? 0 }
   }
 
   private async log(userId: string | null, action: string, targetType?: string, targetId?: string, detail?: string) {

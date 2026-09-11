@@ -29,6 +29,12 @@ export class SharesController {
     return ok(await this.shares.revoke(user.id, fileId, shareId), '分享链接已撤销')
   }
 
+  @Post('files/:fileId/shares/:shareId/rotate')
+  async rotate(@Req() request: Request, @Param('fileId') fileId: string, @Param('shareId') shareId: string) {
+    const user = await this.auth.getCurrentUser(request.cookies?.[SESSION_COOKIE])
+    return ok(await this.shares.rotate(user.id, fileId, shareId), '分享链接已重新生成')
+  }
+
   @Get('shares/:token')
   async inspect(@Param('token') token: string) {
     return ok(await this.shares.inspect(token), '分享链接有效')
