@@ -109,7 +109,7 @@ export class PrototypeSpikeController {
       setImmediate(() => void this.parseSourceRecord(record.id, sourcePath, extractDirectory, extension))
       return ok({ id: record.id, projectId, parseStatus: 'parsing', pageCount: 0, entryPageId: null }, `${isHtml ? 'HTML' : 'ZIP'} 已接收，正在解析`)
     } catch (error) {
-      await this.prisma.prototypeFile.update({ where: { id: record.id }, data: { parseStatus: 'FAILED', parseError: error instanceof Error ? error.message : 'ZIP 保存失败' } })
+      await this.prisma.prototypeFile.update({ where: { id: record.id }, data: { parseStatus: 'FAILED', parseError: this.toParseError(error, 'ZIP 保存失败') } })
       throw error
     }
   }
@@ -127,7 +127,19 @@ export class PrototypeSpikeController {
       }
       const entryPage = pages.find((page) => page.isEntry)
       const pageRecords = await this.prisma.$transaction(async (tx) => {
-        await tx.prototypePage.createMany({ data: pages.map((page) => ({ ...page, fileId })) })
+        // Clean old pages (retry-safe)
+        await tx.prototypePage.deleteMany({ where: { fileId } })
+        await tx.prototypePage.createMany({
+          data: pages.map((page) => ({
+            fileId,
+            title: page.title,
+            relativePath: page.relativePath,
+            directoryPath: page.directoryPath,
+            isEntry: page.isEntry,
+            sortOrder: page.sortOrder,
+            depth: page.depth ?? null,
+          })),
+        })
         return tx.prototypePage.findMany({ where: { fileId }, orderBy: { sortOrder: 'asc' } })
       })
       const entry = pageRecords.find((page) => page.relativePath === entryPage?.relativePath)
@@ -137,10 +149,14 @@ export class PrototypeSpikeController {
       })
       return saved
     } catch (error) {
-      await this.prisma.prototypeFile.update({
-        where: { id: fileId },
-        data: { parseStatus: 'FAILED', parseError: error instanceof Error ? error.message : 'ZIP 解析失败' },
-      })
+      try {
+        await this.prisma.prototypeFile.update({
+          where: { id: fileId },
+          data: { parseStatus: 'FAILED', parseError: this.toParseError(error, 'ZIP 解析失败') },
+        })
+      } catch (persistError) {
+        console.error('[PrototypeSpike] Failed to persist parse error', persistError)
+      }
       return null
     }
   }
@@ -190,6 +206,11 @@ export class PrototypeSpikeController {
     response.setHeader('Content-Security-Policy', "sandbox allow-scripts allow-same-origin")
     // Supplying an explicit root preserves the relative-resource contract on Windows as well.
     return response.sendFile(safePath, { root })
+  }
+
+  private toParseError(error: unknown, fallback: string): string {
+    const message = error instanceof Error ? error.message : fallback
+    return message.replace(/\s+/g, ' ').trim().slice(0, 1000)
   }
 
   private isZip(buffer: Buffer) {
