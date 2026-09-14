@@ -230,22 +230,34 @@ export class ZipParserService {
         }
       }
       
-      // 在受控环境中执行 document.js
-      const evalContext = { $axure: mockAxure }
-      const wrapped = `(function($axure) { ${content} })`
-      // eslint-disable-next-line no-eval
-      eval(wrapped)(evalContext.$axure)
+      // 在受控环境中执行 document.js，添加更多防护
+      try {
+        const evalContext = { $axure: mockAxure, console: { log: () => {}, error: () => {} }, window: undefined }
+        const wrapped = `(function($axure) { ${content} })`
+        // eslint-disable-next-line no-eval
+        eval(wrapped)(evalContext.$axure)
+      } catch (evalError) {
+        // eval 执行失败，可能是 document.js 有语法错误或包含不支持的代码
+        // 记录但不中断，直接回退到字母序
+        console.warn('[ZipParser] Failed to execute document.js:', evalError instanceof Error ? evalError.message : String(evalError))
+      }
       
-      if (capturedData.sitemap?.rootNodes) {
+      if (capturedData.sitemap?.rootNodes && Array.isArray(capturedData.sitemap.rootNodes)) {
         let sortOrder = 0
         const traverse = (nodes: AxurePage[], depth: number) => {
+          if (!Array.isArray(nodes)) return
           for (const node of nodes) {
-            if (node.url) {
-              // URL 可能已编码,需要规范化
-              const normalizedUrl = decodeURIComponent(node.url).replaceAll('\\', '/')
-              orderMap.set(normalizedUrl, { sortOrder: sortOrder++, depth })
+            if (node && node.url && typeof node.url === 'string') {
+              try {
+                // URL 可能已编码,需要规范化
+                const normalizedUrl = decodeURIComponent(node.url).replaceAll('\\', '/')
+                orderMap.set(normalizedUrl, { sortOrder: sortOrder++, depth })
+              } catch (urlError) {
+                // URL 解码失败，跳过此项
+                console.warn('[ZipParser] Failed to decode URL:', node.url)
+              }
             }
-            if (node.children && node.children.length > 0) {
+            if (node && node.children && Array.isArray(node.children) && node.children.length > 0) {
               traverse(node.children, depth + 1)
             }
           }
@@ -256,6 +268,7 @@ export class ZipParserService {
       return orderMap
     } catch (error) {
       // document.js 不存在或解析失败,返回空 Map,回退到字母序
+      console.warn('[ZipParser] Failed to parse Axure document order:', error instanceof Error ? error.message : String(error))
       return new Map()
     }
   }
