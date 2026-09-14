@@ -219,7 +219,11 @@ export class ZipParserService {
   private async parseAxureDocumentOrder(root: string): Promise<Map<string, { sortOrder: number; depth: number }>> {
     const documentPath = join(root, 'data', 'document.js')
     try {
-      const content = await fs.readFile(documentPath, 'utf8')
+      let content = await fs.readFile(documentPath, 'utf8')
+      // 移除 BOM（UTF-8 with BOM 会在文件开头插入 \uFEFF）
+      if (content.charCodeAt(0) === 0xFEFF) {
+        content = content.slice(1)
+      }
       const orderMap = new Map<string, { sortOrder: number; depth: number }>()
       
       // 模拟 $axure 对象来捕获 sitemap 数据
