@@ -113,7 +113,7 @@ describe('Sprint 6B-2 HTTP integration: session share access lifecycle', () => {
     expect(response.headers['content-security-policy']).toContain('sandbox allow-scripts allow-same-origin')
   })
 
-  it('creates a share link using the owner session without exposing tokens in its list endpoint', async () => {
+  it('creates a share link and returns plaintext token in list endpoint for client-side copy', async () => {
     const response = await request(app.getHttpServer()).post(`/api/files/${fileId}/shares`).set('Cookie', ownerCookie).send({ expiresInDays: 7 }).expect(201)
     expect(response.body.success).toBe(true)
     expect(response.body.data.token).toMatch(/^[A-Za-z0-9_-]{40,}$/)
@@ -121,14 +121,15 @@ describe('Sprint 6B-2 HTTP integration: session share access lifecycle', () => {
     shareId = response.body.data.id
 
     const list = await request(app.getHttpServer()).get(`/api/files/${fileId}/shares`).set('Cookie', ownerCookie).expect(200)
-    expect(list.body.data).toEqual([expect.objectContaining({ id: shareId, status: 'active', acceptedCount: 0 })])
-    expect(JSON.stringify(list.body.data)).not.toContain(token)
+    expect(list.body.data).toEqual([expect.objectContaining({ id: shareId, status: 'active', acceptedCount: 0, token })])
+    // 产品决策：明文 token 持久化并返回,以便前端随时复制历史分享链接(有意为之的安全取舍)
+    expect(JSON.stringify(list.body.data)).toContain(token)
   })
 
   it('accepts a share with the guest session and exposes read-only Viewer access', async () => {
     await request(app.getHttpServer()).get(`/api/shares/${token}`).expect(200)
     await request(app.getHttpServer()).post(`/api/shares/${token}/accept`).set('Cookie', guestCookie).expect(201).expect(({ body }) => {
-      expect(body.data).toEqual({ fileId })
+      expect(body.data).toEqual({ fileId, accessType: 'VIEW_ONLY', joinedTeamId: null })
     })
 
     const pages = await request(app.getHttpServer()).get(`/api/files/${fileId}/pages`).set('Cookie', guestCookie).expect(200)

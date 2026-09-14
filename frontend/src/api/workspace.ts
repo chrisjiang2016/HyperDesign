@@ -120,6 +120,7 @@ export type PrototypePage = {
   relativePath: string
   isEntry: boolean
   sortOrder: number
+  depth?: number
 }
 
 export type FilePermission = {

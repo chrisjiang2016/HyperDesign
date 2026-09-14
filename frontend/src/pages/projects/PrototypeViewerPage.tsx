@@ -196,7 +196,14 @@ export function PrototypeViewerPage() {
     title: projectFiles.find((file) => file.id === fileId)?.name ?? '原型文件',
     subtitle: '真实项目原型',
     pageCount: apiPages.length,
-    pages: apiPages.map((page) => ({ id: page.id, name: page.title || page.relativePath, path: page.relativePath, previewPath: page.relativePath, isCurrent: page.isEntry })),
+    pages: apiPages.map((page) => ({ 
+      id: page.id, 
+      name: page.title || page.relativePath, 
+      path: page.relativePath, 
+      previewPath: page.relativePath, 
+      isCurrent: page.isEntry,
+      depth: page.depth
+    })),
     markers: [] as ViewerMarker[],
     comments: [] as ViewerComment[],
   }
@@ -821,12 +828,14 @@ export function PrototypeViewerPage() {
           {viewerFile.pages.map((page) => {
             const isActive = page.id === activePage?.id
             const count = pageCommentCount(page.id)
+            const indent = (page.depth ?? 0) * 16 // 每层缩进 16px
             return (
               <button
                 key={page.id}
                 type="button"
                 className={`pv-page-item${isActive ? ' is-active' : ''}`}
                 onClick={() => switchPage(page.id)}
+                style={{ paddingLeft: `${12 + indent}px` }}
               >
                 <div className="pv-page-name">{page.name}</div>
                 <div className="pv-page-row-meta">

@@ -9,6 +9,15 @@ export interface ParsedHtmlPage {
   title: string | null
   isEntry: boolean
   sortOrder: number
+  depth?: number
+}
+
+interface AxurePage {
+  id: string
+  pageName: string
+  url: string
+  type: string
+  children?: AxurePage[]
 }
 
 // Upload bytes are limited at the HTTP boundary. These limits cap the expanded
@@ -55,20 +64,44 @@ export class ZipParserService {
     const relativePaths = htmlFiles
       .map((file) => relative(root, file).replaceAll(sep, '/'))
       .filter((path) => this.isPrototypePage(path))
-      .sort((a, b) => a.localeCompare(b))
+
     if (relativePaths.length === 0) {
       throw new BadRequestException({ errorCode: 'NO_HTML_FOUND', message: 'ZIP 中未识别到可预览的原型页面' })
     }
+
+    // 尝试从 Axure document.js 获取页面顺序
+    const axureOrder = await this.parseAxureDocumentOrder(root)
+    
+    if (axureOrder.size > 0) {
+      // 使用 Axure 原始顺序
+      relativePaths.sort((a, b) => {
+        const orderA = axureOrder.get(a)
+        const orderB = axureOrder.get(b)
+        if (orderA !== undefined && orderB !== undefined) {
+          return orderA.sortOrder - orderB.sortOrder
+        }
+        // 未在 document.js 中找到的文件排到最后，按字母序
+        if (orderA !== undefined) return -1
+        if (orderB !== undefined) return 1
+        return a.localeCompare(b)
+      })
+    } else {
+      // 回退到字母顺序（原有逻辑）
+      relativePaths.sort((a, b) => a.localeCompare(b))
+    }
+
     const entryPath = this.selectEntry(relativePaths)
 
     return Promise.all(relativePaths.map(async (relativePath, sortOrder) => {
       const absolutePath = this.safeDestination(root, relativePath)
+      const axureInfo = axureOrder.get(relativePath)
       return {
         relativePath,
         directoryPath: dirname(relativePath) === '.' ? null : dirname(relativePath).replaceAll(sep, '/'),
         title: await this.extractTitle(absolutePath),
         isEntry: relativePath === entryPath,
         sortOrder,
+        depth: axureInfo?.depth,
       }
     }))
   }
@@ -177,5 +210,53 @@ export class ZipParserService {
       const codePoint = entity.toLowerCase().startsWith('x') ? Number.parseInt(entity.slice(1), 16) : Number.parseInt(entity, 10)
       return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : _
     })
+  }
+
+  /**
+   * 解析 Axure document.js 获取页面顺序和层级信息
+   * 返回 Map<relativePath, { sortOrder, depth }>
+   */
+  private async parseAxureDocumentOrder(root: string): Promise<Map<string, { sortOrder: number; depth: number }>> {
+    const documentPath = join(root, 'data', 'document.js')
+    try {
+      const content = await fs.readFile(documentPath, 'utf8')
+      const orderMap = new Map<string, { sortOrder: number; depth: number }>()
+      
+      // 模拟 $axure 对象来捕获 sitemap 数据
+      const capturedData: { sitemap?: { rootNodes?: AxurePage[] } } = {}
+      const mockAxure = {
+        loadDocument: (data: any) => {
+          capturedData.sitemap = data?.sitemap
+        }
+      }
+      
+      // 在受控环境中执行 document.js
+      const evalContext = { $axure: mockAxure }
+      const wrapped = `(function($axure) { ${content} })`
+      // eslint-disable-next-line no-eval
+      eval(wrapped)(evalContext.$axure)
+      
+      if (capturedData.sitemap?.rootNodes) {
+        let sortOrder = 0
+        const traverse = (nodes: AxurePage[], depth: number) => {
+          for (const node of nodes) {
+            if (node.url) {
+              // URL 可能已编码,需要规范化
+              const normalizedUrl = decodeURIComponent(node.url).replaceAll('\\', '/')
+              orderMap.set(normalizedUrl, { sortOrder: sortOrder++, depth })
+            }
+            if (node.children && node.children.length > 0) {
+              traverse(node.children, depth + 1)
+            }
+          }
+        }
+        traverse(capturedData.sitemap.rootNodes, 0)
+      }
+      
+      return orderMap
+    } catch (error) {
+      // document.js 不存在或解析失败,返回空 Map,回退到字母序
+      return new Map()
+    }
   }
 }
