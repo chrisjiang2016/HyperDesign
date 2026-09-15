@@ -839,8 +839,7 @@ export function PrototypeViewerPage() {
               >
                 <div className="pv-page-name">{page.name}</div>
                 <div className="pv-page-row-meta">
-                  <span>{page.path}</span>
-                  <span>{isActive ? '当前' : `评论 ${count}`}</span>
+                  <span>评论 {count}</span>
                 </div>
               </button>
             )
@@ -850,17 +849,6 @@ export function PrototypeViewerPage() {
 
       <div className="pv-sidebar-group">
         <NavTree sections={['favorites']} />
-      </div>
-
-      <div className="pv-sidebar-group">
-        <div className="pv-sidebar-label">本轮评审</div>
-        <div className="pv-sidebar-note">
-          <strong>本轮评审重点</strong>
-          <p>
-            确认首页首屏活动区、频道入口和推荐流的层级关系，同时校对按钮位置与标注规格。当前预览页：
-            {activePage?.name ?? '—'}。
-          </p>
-        </div>
       </div>
     </div>
   )
