@@ -3,7 +3,6 @@ import { Button, Input, App as AntdApp, Modal, Select, Tag, Tooltip } from 'antd
 import { CommentOutlined, CopyOutlined, ExportOutlined, LeftOutlined, MinusOutlined, PlusOutlined, ReloadOutlined, RightOutlined, ShareAltOutlined, TeamOutlined, ToolOutlined } from '@ant-design/icons'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ViewerShellLayout } from '@/layouts/AppLayouts'
-import { NavTree } from '@/components/navigation/NavTree'
 import { PageEmpty, PageError, PageLoading } from '@/components/common/pagestates'
 import { createAnnotationComment, createFileAnnotation, createFileShareLink, getFileAnnotations, getFileShareLinks, getFirstPreview, getNavTeamsProjects, getProjectDetail, getProjectFiles, getPrototypePages, revokeFileShareLink, rotateFileShareLink, type CollaborationAnnotation, type FilePermission, type NavTeam, type ProjectDetail, type PrototypePage, type ShareAccessType, type ShareLink } from '@/api/workspace'
 import type { ViewerMarker, ViewerComment, ViewerAnnotationPayload } from '@/store/viewerMockData'
@@ -781,7 +780,6 @@ export function PrototypeViewerPage() {
   const leftSidebar = (
     <div className="pv-left">
       <div className={`pv-project-switcher${projectSwitcherOpen ? ' is-open' : ''}`}>
-        <div className="pv-project-switcher__label">当前项目</div>
         <button
           type="button"
           className="pv-project-switcher__trigger"
@@ -835,7 +833,7 @@ export function PrototypeViewerPage() {
                 type="button"
                 className={`pv-page-item${isActive ? ' is-active' : ''}`}
                 onClick={() => switchPage(page.id)}
-                style={{ paddingLeft: `${12 + indent}px` }}
+                style={{ paddingLeft: `${4 + indent}px`, paddingRight: '4px' }}
               >
                 <div className="pv-page-name">{page.name}</div>
                 <div className="pv-page-row-meta">
@@ -845,10 +843,6 @@ export function PrototypeViewerPage() {
             )
           })}
         </div>
-      </div>
-
-      <div className="pv-sidebar-group">
-        <NavTree sections={['favorites']} />
       </div>
     </div>
   )

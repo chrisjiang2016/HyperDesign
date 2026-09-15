@@ -496,7 +496,7 @@ textarea {
 
 /* ---------- Viewer project switcher (replaces Viewer workbench / my teams tree) ---------- */
 .pv-project-switcher {
-  padding: 18px 16px 0;
+  padding: 12px 16px 0;
 }
 
 .pv-project-switcher__label {
@@ -512,7 +512,7 @@ textarea {
 .pv-project-switcher__trigger {
   width: 100%;
   min-width: 0;
-  padding: 8px 12px;
+  padding: 6px 14px;
   border: 1px solid var(--border-light);
   border-radius: 12px;
   background: var(--bg-surface);
@@ -2745,7 +2745,7 @@ a:hover {
   display: grid;
   grid-auto-rows: max-content;
   align-content: start;
-  gap: 4px;
+  gap: 2px;
   padding-right: 4px;
 }
 
@@ -2754,12 +2754,16 @@ a:hover {
   text-align: left;
   border: 1px solid var(--border-light);
   border-radius: 12px;
-  padding: 8px 12px;
+  padding: 6px 4px;
   background: var(--bg-surface);
   cursor: pointer;
   transition: var(--transition-fast);
   font: inherit;
   color: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .pv-page-item:hover {
@@ -2774,21 +2778,23 @@ a:hover {
 
 .pv-page-name {
   font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 4px;
+  font-weight: 400;
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex: 1;
+  min-width: 0;
 }
 
 .pv-page-row-meta {
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
+  align-items: center;
+  gap: 8px;
   font-size: 12px;
   color: var(--text-tertiary);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .pv-sidebar-note {
