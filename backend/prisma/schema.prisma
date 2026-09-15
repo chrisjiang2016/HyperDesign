@@ -101,7 +101,7 @@ model PrototypeFile {
   storageKey       String               // 相对存储路径，格式: uploads/{fileId}
   fileSize         Int
   parseStatus      PrototypeParseStatus @default(PARSING)
-  parseError       String?
+  parseError       String?              @db.Text
   entryPageId      String?
   pageCount        Int                  @default(0)
   uploaderId       String
@@ -145,6 +145,7 @@ model PrototypePage {
   directoryPath String?
   isEntry      Boolean  @default(false)
   sortOrder    Int      @default(0)
+  depth        Int?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   file         PrototypeFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
