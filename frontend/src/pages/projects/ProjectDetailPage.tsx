@@ -34,7 +34,6 @@ export function ProjectDetailPage() {
   const [folderOpen, setFolderOpen] = useState(false)
   const [creatingFolder, setCreatingFolder] = useState(false)
   const [retryingFileId, setRetryingFileId] = useState<string | null>(null)
-  const [deletingFileId, setDeletingFileId] = useState<string | null>(null)
   const [permissionFile, setPermissionFile] = useState<ProjectFile | null>(null)
   const [permissionMembers, setPermissionMembers] = useState<FilePermissionMember[]>([])
   const [permissionsLoading, setPermissionsLoading] = useState(false)
@@ -143,20 +142,25 @@ export function ProjectDetailPage() {
   const handleDeleteFile = (file: ProjectFile) => {
     Modal.confirm({
       centered: true,
-      title: `删除原型“${file.name}”`,
+      title: `删除原型"${file.name}"`,
       content: '这将永久删除 ZIP、解析页面、评论和分享链接，无法恢复。',
       okText: '确认删除',
-      okButtonProps: { danger: true, loading: deletingFileId === file.id },
+      okButtonProps: { danger: true },
       cancelText: '取消',
-      onOk: async () => {
-        setDeletingFileId(file.id)
-        try {
-          await deleteProjectFile(projectId, file.id)
-          await loadProject(false)
-          message.success('原型文件已删除')
-        } finally {
-          setDeletingFileId(null)
-        }
+      onOk: () => {
+        return new Promise<void>((resolve, reject) => {
+          deleteProjectFile(projectId, file.id)
+            .then(() => loadProject(false))
+            .then(() => {
+              message.success('原型文件已删除')
+              resolve()
+            })
+            .catch((error) => {
+              message.error('删除失败，请稍后重试')
+              console.error('Delete file error:', error)
+              reject(error)
+            })
+        })
       },
     })
   }

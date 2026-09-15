@@ -593,8 +593,9 @@ export class WorkspaceService {
       throw new ForbiddenException({ errorCode: 'FORBIDDEN', message: '没有删除该原型文件的权限' })
     }
     await this.prisma.prototypeFile.delete({ where: { id: fileId } })
+    // Clean up disk storage in background to avoid blocking the response
     if (file.storageKey) {
-      await Promise.allSettled([
+      void Promise.allSettled([
         rm(this.storage.getUploadDirectory(file.id), { recursive: true, force: true }),
         rm(this.storage.getExtractedPath(file.storageKey), { recursive: true, force: true }),
       ])
