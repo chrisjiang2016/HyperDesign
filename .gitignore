@@ -68,3 +68,51 @@ test resources/
 .env.production.fixed
 frontend/frontend-dist.tar.gz
 ~$*
+
+# Test files and scripts
+test-*.html
+test-*.py
+test-*.js
+test-automation.js
+test-screenshots/
+test-cases-*.md
+test-plan.md
+test-report-*.md
+build_testcases*.py
+encode_file.py
+hyperdesign-test-page.html
+统一账户流水查询.html
+*.xlsx
+
+# Deployment scripts and bundles
+deploy-*.sh
+update-*.sh
+*.bundle
+部署指南-*.md
+部署指南-*.md
+
+# Build outputs and generated artifacts
+outputs/
+frontend/start-dev.bat
+
+# Nginx config (managed separately on server)
+nginx-hyperdesign.conf
+
+# Development logs and progress tracking
+docs/*今日*.md
+docs/*进度*.md
+docs/*Sprint*.md
+docs/*Handover*.md
+docs/*任务*.md
+docs/*收工*.md
+docs/*Spike*.md
+docs/*实施方案*.md
+docs/*缺口清单*.md
+docs/*记录*.md
+docs/*完成记录*.md
+docs/*启动*.md
+docs/*汇总*.md
+docs/*交付*.md
+docs/*验证*.md
+docs/*确认*.md
+docs/*结论*.md
