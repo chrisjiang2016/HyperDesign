@@ -524,6 +524,7 @@ export class WorkspaceService {
         projectId: true,
         storageKey: true,
         entryPageId: true,
+        originalFilename: true,
         permissions: { where: { userId }, select: { canView: true, canComment: true, canEdit: true, canDelete: true } },
         shareLinks: { where: { status: 'ACTIVE', expiresAt: { gt: new Date() }, grants: { some: { userId } } }, select: { id: true }, take: 1 },
       },

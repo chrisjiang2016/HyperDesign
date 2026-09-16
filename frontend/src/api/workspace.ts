@@ -230,6 +230,32 @@ export async function deleteProjectFile(projectId: string, fileId: string) {
   return (await http.delete<ApiResponse<null>>(`/projects/${projectId}/files/${fileId}`)).data.data
 }
 
+export async function downloadProjectFile(projectId: string, fileId: string) {
+  try {
+    const response = await http.get(`/projects/${projectId}/files/${fileId}/download`, { responseType: 'blob' })
+    const contentDisposition = response.headers['content-disposition']
+    let filename = 'download'
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename\*?=['"]?(?:UTF-\d['"]*)?([^;\r\n"']*)['"]?/i)
+      if (match?.[1]) filename = decodeURIComponent(match[1])
+    }
+    const blob = response.data
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (error: any) {
+    console.error('下载失败详情:', error)
+    console.error('错误响应:', error.response?.data)
+    console.error('错误状态:', error.response?.status)
+    throw error
+  }
+}
+
 export async function retryProjectFileParse(projectId: string, fileId: string) {
   return (await http.post<ApiResponse<{ id: string; parseStatus: string }>>(`/projects/${projectId}/files/${fileId}/retry-parse`)).data.data
 }

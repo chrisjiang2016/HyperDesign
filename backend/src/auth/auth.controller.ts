@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Put, Req, Res, UseGuards } from '@nestjs/common'
+import { Body, Controller, Delete, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Put, Req, Res, StreamableFile, UseGuards } from '@nestjs/common'
 import type { Request, Response } from 'express'
 import { ok } from '../common/api-response'
 import { RateLimit } from '../rate-limit/rate-limit.decorator'
@@ -23,6 +23,8 @@ import {
   UpdateFilePermissionDto,
 } from './dto'
 import { CurrentUserService, WorkspaceService } from './current-user.service'
+import { StorageService } from '../storage/storage.service'
+import { promises as fs } from 'fs'
 
 const SESSION_COOKIE = 'hd_sid'
 
@@ -32,6 +34,7 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly currentUserService: CurrentUserService,
     private readonly workspaceService: WorkspaceService,
+    private readonly storage: StorageService,
   ) {}
 
   @Post('auth/register')
@@ -217,6 +220,34 @@ export class AuthController {
     const user = await this.currentUserService.getCurrentUserFromToken(request.cookies?.[SESSION_COOKIE])
     await this.workspaceService.deleteProjectFile(user.id, projectId, fileId)
     return ok(null, '原型文件已删除')
+  }
+
+  @Get('projects/:projectId/files/:fileId/download')
+  async downloadOriginalFile(@Req() request: Request, @Param('projectId') projectId: string, @Param('fileId') fileId: string, @Res({ passthrough: true }) response: Response) {
+    const user = await this.currentUserService.getCurrentUserFromToken(request.cookies?.[SESSION_COOKIE])
+    const file = await this.workspaceService.canAccessPrototypeFile(user.id, fileId)
+    if (!file) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '文件不存在或无权访问' })
+    if (!file.storageKey) throw new NotFoundException({ errorCode: 'SOURCE_MISSING', message: '原始文件不存在' })
+    
+    const sourceExtension = this.getUploadExtension(file.originalFilename)
+    const originalSourcePath = this.storage.getOriginalSourcePath(file.storageKey, sourceExtension)
+    
+    try {
+      await fs.access(originalSourcePath)
+    } catch {
+      throw new NotFoundException({ errorCode: 'SOURCE_MISSING', message: '原始文件已不存在' })
+    }
+    
+    const fileBuffer = await fs.readFile(originalSourcePath)
+    const mimeType = sourceExtension === '.zip' ? 'application/zip' : 'text/html'
+    response.setHeader('Content-Type', mimeType)
+    response.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(file.originalFilename)}"`)
+    response.setHeader('Content-Length', fileBuffer.length)
+    return new StreamableFile(fileBuffer)
+  }
+
+  private getUploadExtension(filename: string): '.zip' | '.html' {
+    return filename.toLowerCase().endsWith('.zip') ? '.zip' : '.html'
   }
 
   @Get('projects/:projectId/first-preview')
