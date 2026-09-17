@@ -40,14 +40,14 @@ export class TeamInvitesService {
       // 创建团队成员记录
       await this.prisma.teamMember.create({ data: { teamId: invite.teamId, userId, role: 'MEMBER', canUpload: true } })
       
-      // 自动为新成员授予团队下所有项目的查看权限
+      // 自动为新成员授予团队下所有项目的完整编辑权限（增删改查）
       const projects = await this.prisma.project.findMany({ where: { teamId: invite.teamId }, select: { id: true } })
       if (projects.length > 0) {
         await this.prisma.projectPermission.createMany({
           data: projects.map(project => ({
             projectId: project.id,
             userId,
-            level: 'VIEW' as const,
+            level: 'EDIT' as const,
             grantedById: invite.createdById,
           })),
           skipDuplicates: true,
