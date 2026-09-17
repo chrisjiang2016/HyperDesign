@@ -37,8 +37,24 @@ export class TeamInvitesService {
     const invite = await this.findActiveToken(token)
     const existing = await this.prisma.teamMember.findUnique({ where: { teamId_userId: { teamId: invite.teamId, userId } }, select: { id: true } })
     if (!existing) {
-      await this.prisma.teamMember.create({ data: { teamId: invite.teamId, userId, role: 'MEMBER', canUpload: false } })
-      await this.log(userId, 'TEAM_JOINED_VIA_INVITE', invite.teamId, `invite=${invite.id}`)
+      // 创建团队成员记录
+      await this.prisma.teamMember.create({ data: { teamId: invite.teamId, userId, role: 'MEMBER', canUpload: true } })
+      
+      // 自动为新成员授予团队下所有项目的查看权限
+      const projects = await this.prisma.project.findMany({ where: { teamId: invite.teamId }, select: { id: true } })
+      if (projects.length > 0) {
+        await this.prisma.projectPermission.createMany({
+          data: projects.map(project => ({
+            projectId: project.id,
+            userId,
+            level: 'VIEW' as const,
+            grantedById: invite.createdById,
+          })),
+          skipDuplicates: true,
+        })
+      }
+      
+      await this.log(userId, 'TEAM_JOINED_VIA_INVITE', invite.teamId, `invite=${invite.id}, projects=${projects.length}`)
     }
     return { teamId: invite.teamId, teamName: invite.team.name, alreadyMember: Boolean(existing) }
   }
