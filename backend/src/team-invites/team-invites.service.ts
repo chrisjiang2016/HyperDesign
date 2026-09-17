@@ -54,7 +54,27 @@ export class TeamInvitesService {
         })
       }
       
-      await this.log(userId, 'TEAM_JOINED_VIA_INVITE', invite.teamId, `invite=${invite.id}, projects=${projects.length}`)
+      // 自动为新成员授予团队下所有原型文件的完整权限（查看、评论、编辑、删除）
+      const files = await this.prisma.prototypeFile.findMany({
+        where: { project: { teamId: invite.teamId } },
+        select: { id: true }
+      })
+      if (files.length > 0) {
+        await this.prisma.filePermission.createMany({
+          data: files.map(file => ({
+            fileId: file.id,
+            userId,
+            canView: true,
+            canComment: true,
+            canEdit: true,
+            canDelete: true,
+            grantedById: invite.createdById,
+          })),
+          skipDuplicates: true,
+        })
+      }
+      
+      await this.log(userId, 'TEAM_JOINED_VIA_INVITE', invite.teamId, `invite=${invite.id}, projects=${projects.length}, files=${files.length}`)
     }
     return { teamId: invite.teamId, teamName: invite.team.name, alreadyMember: Boolean(existing) }
   }
