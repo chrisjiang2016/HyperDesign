@@ -252,16 +252,42 @@ export function PrototypeViewerPage() {
   const buildShareUrl = (token: string) => `${window.location.origin}/shares/${token}`
 
   const copyShareUrl = async (url: string) => {
+    let copied = false
+
     try {
       // 部分浏览器/无焦点场景下 clipboard API 可能挂起，避免阻塞分享创建主流程
-      await Promise.race([
-        navigator.clipboard.writeText(url),
-        new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error('clipboard timeout')), 1500)),
-      ])
-      message.success('分享链接已复制')
+      if (typeof navigator.clipboard?.writeText === 'function') {
+        await Promise.race([
+          navigator.clipboard.writeText(url),
+          new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error('clipboard timeout')), 1500)),
+        ])
+        copied = true
+      }
     } catch {
-      message.info(`请复制链接：${url}`)
+      // HTTP 页面或浏览器权限限制下，降级到传统复制方式。
     }
+
+    if (!copied) {
+      try {
+        const textarea = document.createElement('textarea')
+        textarea.value = url
+        textarea.setAttribute('readonly', '')
+        textarea.style.position = 'fixed'
+        textarea.style.left = '-9999px'
+        textarea.style.opacity = '0'
+        document.body.appendChild(textarea)
+        textarea.focus()
+        textarea.select()
+        textarea.setSelectionRange(0, url.length)
+        copied = document.execCommand('copy')
+        textarea.remove()
+      } catch {
+        copied = false
+      }
+    }
+
+    if (copied) message.success('分享链接已复制')
+    else message.info(`请复制链接：${url}`)
   }
 
   const createShare = async () => {
