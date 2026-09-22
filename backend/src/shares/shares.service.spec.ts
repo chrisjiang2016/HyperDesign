@@ -11,12 +11,22 @@ describe('SharesService', () => {
     jest.useFakeTimers()
     jest.setSystemTime(now)
     prisma = {
-      prototypeFile: { findUnique: jest.fn() },
+      prototypeFile: { findUnique: jest.fn(), findMany: jest.fn() },
       shareLink: { create: jest.fn(), findMany: jest.fn(), findFirst: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
       shareGrant: { upsert: jest.fn() },
       teamMember: { upsert: jest.fn() },
+      project: { findMany: jest.fn() },
+      projectPermission: { createMany: jest.fn() },
+      filePermission: { createMany: jest.fn() },
       operationLog: { create: jest.fn().mockResolvedValue({}) },
-      $transaction: jest.fn(async (callback) => callback({ shareGrant: prisma.shareGrant, teamMember: prisma.teamMember })),
+      $transaction: jest.fn(async (callback) => callback({
+        shareGrant: prisma.shareGrant,
+        teamMember: prisma.teamMember,
+        project: prisma.project,
+        projectPermission: prisma.projectPermission,
+        prototypeFile: prisma.prototypeFile,
+        filePermission: prisma.filePermission,
+      })),
     }
     // 默认非超管，需要验证超管放行的用例单独覆写
     workspace = { isSuperAdmin: jest.fn().mockResolvedValue(false) }
@@ -73,24 +83,43 @@ describe('SharesService', () => {
   it('allows acceptance only while the link is active and unexpired', async () => {
     prisma.shareLink.findUnique.mockResolvedValue(activeLink)
     prisma.shareGrant.upsert.mockResolvedValue({})
+    prisma.filePermission.createMany.mockResolvedValue({ count: 1 })
     await expect(service.accept('guest-1', 'valid-token')).resolves.toEqual({ fileId: 'file-1', accessType: 'VIEW_ONLY', joinedTeamId: null })
     expect(prisma.shareGrant.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: { shareLinkId: 'share-1', userId: 'guest-1' } }))
+    expect(prisma.filePermission.createMany).toHaveBeenCalledWith({
+      data: [{ fileId: 'file-1', userId: 'guest-1', canView: true, canComment: false, canEdit: false, canDelete: false, grantedById: undefined }],
+      skipDuplicates: true,
+    })
     // 仅查看类型绝不能把对方加入团队
     expect(prisma.teamMember.upsert).not.toHaveBeenCalled()
   })
 
-  it('adds the acceptor as a team member for JOIN_TEAM links', async () => {
-    prisma.shareLink.findUnique.mockResolvedValue({ ...activeLink, accessType: 'JOIN_TEAM' })
+  it('adds the acceptor as a team member and grants team permissions for JOIN_TEAM links', async () => {
+    prisma.shareLink.findUnique.mockResolvedValue({ ...activeLink, accessType: 'JOIN_TEAM', createdById: 'inviter-1' })
     prisma.prototypeFile.findUnique.mockResolvedValue({ project: { teamId: 'team-9' } })
     prisma.shareGrant.upsert.mockResolvedValue({})
     prisma.teamMember.upsert.mockResolvedValue({})
+    prisma.project.findMany.mockResolvedValue([{ id: 'project-1' }])
+    prisma.prototypeFile.findMany.mockResolvedValue([{ id: 'file-1' }, { id: 'file-2' }])
+    prisma.filePermission.createMany.mockResolvedValue({ count: 2 })
 
     await expect(service.accept('guest-1', 'valid-token')).resolves.toEqual({ fileId: 'file-1', accessType: 'JOIN_TEAM', joinedTeamId: 'team-9' })
     expect(prisma.teamMember.upsert).toHaveBeenCalledWith(expect.objectContaining({
       where: { teamId_userId: { teamId: 'team-9', userId: 'guest-1' } },
-      create: { teamId: 'team-9', userId: 'guest-1', role: 'MEMBER' },
-      update: {},
+      create: { teamId: 'team-9', userId: 'guest-1', role: 'MEMBER', canUpload: true },
+      update: { canUpload: true },
     }))
+    expect(prisma.projectPermission.createMany).toHaveBeenCalledWith({
+      data: [{ projectId: 'project-1', userId: 'guest-1', level: 'EDIT', grantedById: 'inviter-1' }],
+      skipDuplicates: true,
+    })
+    expect(prisma.filePermission.createMany).toHaveBeenCalledWith({
+      data: [
+        { fileId: 'file-1', userId: 'guest-1', canView: true, canComment: true, canEdit: true, canDelete: true, grantedById: 'inviter-1' },
+        { fileId: 'file-2', userId: 'guest-1', canView: true, canComment: true, canEdit: true, canDelete: true, grantedById: 'inviter-1' },
+      ],
+      skipDuplicates: true,
+    })
   })
 
   it('refuses to create JOIN_TEAM links for files without a team', async () => {

@@ -76,12 +76,37 @@ export class SharesService {
 
     await this.prisma.$transaction(async (tx) => {
       await tx.shareGrant.upsert({ where: { shareLinkId_userId: { shareLinkId: link.id, userId } }, update: {}, create: { shareLinkId: link.id, userId } })
-      // 「加入团队」类型：把接受者加为团队普通成员；已是成员则保持其现有角色不变（避免把管理员降级）
+
       if (teamId) {
+        // 「加入团队」类型：把接受者加为团队普通成员；已是成员则保持其现有角色不变（避免把管理员降级）
         await tx.teamMember.upsert({
           where: { teamId_userId: { teamId, userId } },
-          update: {},
-          create: { teamId, userId, role: 'MEMBER' },
+          // 可加入团队分享等同于团队邀请：接受者允许在团队中新建原型文件。
+          update: { canUpload: true },
+          create: { teamId, userId, role: 'MEMBER', canUpload: true },
+        })
+
+        // 工作台权限不从团队成员关系自动推导：显式补齐团队下所有项目和文件的编辑权限。
+        const projects = await tx.project.findMany({ where: { teamId }, select: { id: true } })
+        if (projects.length > 0) {
+          await tx.projectPermission.createMany({
+            data: projects.map((project) => ({ projectId: project.id, userId, level: 'EDIT' as const, grantedById: link.createdById })),
+            skipDuplicates: true,
+          })
+        }
+
+        const files = await tx.prototypeFile.findMany({ where: { project: { teamId } }, select: { id: true } })
+        if (files.length > 0) {
+          await tx.filePermission.createMany({
+            data: files.map((file) => ({ fileId: file.id, userId, canView: true, canComment: true, canEdit: true, canDelete: true, grantedById: link.createdById })),
+            skipDuplicates: true,
+          })
+        }
+      } else {
+        // 「仅查看」类型也要写入文件级权限，确保接受者能在工作台访问目标文件。
+        await tx.filePermission.createMany({
+          data: [{ fileId: link.fileId, userId, canView: true, canComment: false, canEdit: false, canDelete: false, grantedById: link.createdById }],
+          skipDuplicates: true,
         })
       }
     })
