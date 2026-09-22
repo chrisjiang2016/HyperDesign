@@ -3296,6 +3296,17 @@ a:hover {
   line-height: 1.7;
 }
 
+.hd-share-modal__manual-copy {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+
+.hd-share-modal__manual-copy .ant-input {
+  min-width: 0;
+  flex: 1;
+}
+
 .hd-share-modal__create {
   display: flex;
   gap: 12px;

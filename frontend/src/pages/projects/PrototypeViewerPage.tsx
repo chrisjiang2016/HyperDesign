@@ -83,6 +83,7 @@ export function PrototypeViewerPage() {
   const [shareDays, setShareDays] = useState(7)
   const [shareAccessType, setShareAccessType] = useState<ShareAccessType>('VIEW_ONLY')
   const [rotatingShareId, setRotatingShareId] = useState<string | null>(null)
+  const [manualCopyUrl, setManualCopyUrl] = useState<string | null>(null)
   const [leftCollapsed, setLeftCollapsed] = useState(false)
   const [rightCollapsed, setRightCollapsed] = useState(false)
   const [projectSwitcherOpen, setProjectSwitcherOpen] = useState(false)
@@ -251,43 +252,56 @@ export function PrototypeViewerPage() {
 
   const buildShareUrl = (token: string) => `${window.location.origin}/shares/${token}`
 
-  const copyShareUrl = async (url: string) => {
-    let copied = false
+  const copyWithLegacyApi = (url: string) => {
+    try {
+      const textarea = document.createElement('textarea')
+      textarea.value = url
+      textarea.setAttribute('readonly', '')
+      textarea.style.position = 'fixed'
+      textarea.style.top = '0'
+      textarea.style.left = '-9999px'
+      textarea.style.width = '1px'
+      textarea.style.height = '1px'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.focus({ preventScroll: true })
+      textarea.select()
+      textarea.setSelectionRange(0, url.length)
+      const copied = document.execCommand('copy')
+      textarea.remove()
+      return copied
+    } catch {
+      return false
+    }
+  }
+
+  const copyShareUrl = async (url: string, allowLegacyCopy = true) => {
+    setManualCopyUrl(null)
+
+    // HTTP 页面只有在用户点击复制按钮的同步阶段，才允许使用兼容 API。
+    if (allowLegacyCopy && window.isSecureContext !== true && copyWithLegacyApi(url)) {
+      message.success('分享链接已复制')
+      return true
+    }
 
     try {
-      // 部分浏览器/无焦点场景下 clipboard API 可能挂起，避免阻塞分享创建主流程
       if (typeof navigator.clipboard?.writeText === 'function') {
-        await Promise.race([
-          navigator.clipboard.writeText(url),
-          new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error('clipboard timeout')), 1500)),
-        ])
-        copied = true
+        await navigator.clipboard.writeText(url)
+        message.success('分享链接已复制')
+        return true
       }
     } catch {
-      // HTTP 页面或浏览器权限限制下，降级到传统复制方式。
+      // Fall through to the manual-copy UI instead of reporting a false success.
     }
 
-    if (!copied) {
-      try {
-        const textarea = document.createElement('textarea')
-        textarea.value = url
-        textarea.setAttribute('readonly', '')
-        textarea.style.position = 'fixed'
-        textarea.style.left = '-9999px'
-        textarea.style.opacity = '0'
-        document.body.appendChild(textarea)
-        textarea.focus()
-        textarea.select()
-        textarea.setSelectionRange(0, url.length)
-        copied = document.execCommand('copy')
-        textarea.remove()
-      } catch {
-        copied = false
-      }
+    if (allowLegacyCopy && window.isSecureContext !== true && copyWithLegacyApi(url)) {
+      message.success('分享链接已复制')
+      return true
     }
 
-    if (copied) message.success('分享链接已复制')
-    else message.info(`请复制链接：${url}`)
+    setManualCopyUrl(url)
+    message.warning('浏览器未允许自动写入剪贴板，请点击弹窗中的“复制地址”')
+    return false
   }
 
   const createShare = async () => {
@@ -295,7 +309,7 @@ export function PrototypeViewerPage() {
     setCreatingShare(true)
     try {
       const link = await createFileShareLink(fileId, shareDays, shareAccessType)
-      await copyShareUrl(buildShareUrl(link.token))
+      await copyShareUrl(buildShareUrl(link.token), false)
       await loadShareLinks()
     } catch (error) {
       // 「加入团队」类型要求文件已归属团队，后端会以业务错误码明确拒绝
@@ -325,7 +339,7 @@ export function PrototypeViewerPage() {
     setRotatingShareId(shareId)
     try {
       const link = await rotateFileShareLink(fileId, shareId)
-      await copyShareUrl(buildShareUrl(link.token))
+      await copyShareUrl(buildShareUrl(link.token), false)
       await loadShareLinks()
       message.success('已生成新的可复制链接（旧链接已失效）')
     } catch {
@@ -1354,12 +1368,20 @@ export function PrototypeViewerPage() {
           </>
         )}
       </div>
-      <Modal centered width={680} title="分享原型" open={shareOpen} onCancel={() => setShareOpen(false)} footer={<Button onClick={() => setShareOpen(false)}>关闭</Button>}>
+      <Modal centered width={680} title="分享原型" open={shareOpen} onCancel={() => { setShareOpen(false); setManualCopyUrl(null) }} footer={<Button onClick={() => { setShareOpen(false); setManualCopyUrl(null) }}>关闭</Button>}>
         <p className="hd-share-modal__intro">
           {shareAccessType === 'JOIN_TEAM'
             ? '分享对象登录或注册后接受链接，将加入该原型所属团队成为普通成员，可查看团队内的项目；链接支持 1–30 天有效期。'
             : '分享对象登录并接受链接后，可获得该原型的只读预览权限，不会加入团队；链接支持 1–30 天有效期。'}
         </p>
+        {manualCopyUrl ? (
+          <div className="hd-share-modal__manual-copy">
+            <Input value={manualCopyUrl} readOnly aria-label="待复制的分享链接" />
+            <Button type="primary" onClick={() => void copyShareUrl(manualCopyUrl)}>
+              <CopyOutlined /> 复制地址
+            </Button>
+          </div>
+        ) : null}
         <div className="hd-share-modal__create">
           <Select
             value={shareAccessType}
