@@ -573,7 +573,7 @@ export class WorkspaceService {
       pageCount: file.pageCount,
       fileSize: file.fileSize,
       uploader: file.uploader.username,
-      canDelete: isTeamAdmin || file.uploaderId === userId || permissionsByFileId.get(file.id) === true,
+      canDelete: isTeamMember || file.uploaderId === userId || permissionsByFileId.get(file.id) === true,
       entryPageId: file.entryPageId,
       createdAt: file.createdAt,
       updatedAt: file.updatedAt,
