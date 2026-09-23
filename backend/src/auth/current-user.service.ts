@@ -555,9 +555,9 @@ export class WorkspaceService {
     const superAdmin = await this.isSuperAdmin(userId)
     await this.requireProjectView(userId, projectId, superAdmin)
     const membership = await this.prisma.teamMember.findFirst({ where: { userId, team: { projects: { some: { id: projectId } } } }, select: { role: true } })
-    const isTeamAdmin = superAdmin || membership?.role === 'ADMIN'
+    const isTeamMember = superAdmin || !!membership
     const files = await this.prisma.prototypeFile.findMany({
-      where: isTeamAdmin ? { projectId } : { projectId, OR: [{ uploaderId: userId }, { permissions: { some: { userId, canView: true } } }] },
+      where: isTeamMember ? { projectId } : { projectId, OR: [{ uploaderId: userId }, { permissions: { some: { userId, canView: true } } }] },
       include: { uploader: { select: { username: true } } },
       orderBy: { updatedAt: 'desc' },
     })
