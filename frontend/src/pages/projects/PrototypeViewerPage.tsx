@@ -309,7 +309,9 @@ export function PrototypeViewerPage() {
     setCreatingShare(true)
     try {
       const link = await createFileShareLink(fileId, shareDays, shareAccessType)
-      await copyShareUrl(buildShareUrl(link.token), false)
+      const url = buildShareUrl(link.token)
+      setManualCopyUrl(url)
+      message.success('分享链接已创建，请复制下方地址')
       await loadShareLinks()
     } catch (error) {
       // 「加入团队」类型要求文件已归属团队，后端会以业务错误码明确拒绝
@@ -1414,7 +1416,7 @@ export function PrototypeViewerPage() {
               <div className="hd-share-link-row__actions">
                 {isActive ? (
                   <Tooltip title={token ? '复制分享链接' : '该链接未保存可复制令牌，请点击「重新生成」获取新的可复制链接（旧链接将失效）。'}>
-                    <Button size="small" disabled={!token} onClick={() => token && void copyShareUrl(buildShareUrl(token))}>
+                    <Button size="small" disabled={!token} onClick={() => { if (token) { setManualCopyUrl(buildShareUrl(token)); message.info('请复制下方地址') } }}>
                       <CopyOutlined /> 复制
                     </Button>
                   </Tooltip>
