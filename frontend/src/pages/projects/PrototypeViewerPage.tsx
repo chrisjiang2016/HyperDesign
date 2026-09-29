@@ -91,6 +91,8 @@ export function PrototypeViewerPage() {
 
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const frameShellRef = useRef<HTMLDivElement>(null)
+  const canvasWrapRef = useRef<HTMLDivElement>(null)
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 })
 
   const sendViewerMode = useCallback((mode: 'inspect' | 'comment' | 'normal') => {
     try {
@@ -566,36 +568,62 @@ export function PrototypeViewerPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [inspectMode, sendInspectorState, sendViewerMode])
 
-  // 根据设备模式和缩放级别计算实际尺寸
+  useEffect(() => {
+    const node = canvasWrapRef.current
+    if (!node) return
+    const measure = () => {
+      setCanvasSize({ width: node.clientWidth, height: node.clientHeight })
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [viewerLoading, viewerLoadError])
+
+  // 根据设备模式和缩放级别计算实际尺寸。桌面模式按预览区画布撑满，避免固定 1200×760 留下大片空白。
   const getFrameDimensions = () => {
-    // 基础尺寸（100%时的尺寸）
     const baseWidths = {
       mobile: 420,
       tablet: 900,
-      desktop: 1200,
+      desktop: 1440,
     }
     const baseHeights = {
       mobile: 720,
       tablet: 760,
-      desktop: 760,
+      desktop: 900,
     }
-
-    const baseWidth = baseWidths[deviceMode]
-    const baseHeight = baseHeights[deviceMode]
     const scale = zoomLevel / 100
 
+    if (deviceMode === 'desktop' && canvasSize.width > 0 && canvasSize.height > 0) {
+      const bannerHeight = inspectMode ? 52 : 0
+      const availableWidth = Math.max(320, canvasSize.width - 16)
+      const availableHeight = Math.max(320, canvasSize.height - bannerHeight - 16)
+      return {
+        width: Math.round(availableWidth * scale),
+        height: Math.round(Math.max(280, availableHeight - 44) * scale),
+      }
+    }
+
     return {
-      width: Math.round(baseWidth * scale),
-      height: Math.round(baseHeight * scale),
+      width: Math.round(baseWidths[deviceMode] * scale),
+      height: Math.round(baseHeights[deviceMode] * scale),
     }
   }
 
   const frameDimensions = getFrameDimensions()
-  const frameStyle = {
-    width: `${frameDimensions.width}px`,
-    // frame shell 还包含 44px 浏览器工具栏，剩余高度全部给原型视口。
-    height: `${frameDimensions.height + 44}px`,
-  }
+  const frameStyle = deviceMode === 'desktop'
+    ? {
+        width: '100%',
+        height: inspectMode ? 'calc(100% - 52px)' : '100%',
+        maxWidth: 'none',
+        transform: `scale(${zoomLevel / 100})`,
+        transformOrigin: 'top left',
+      }
+    : {
+        width: `${frameDimensions.width}px`,
+        // frame shell 还包含 44px 浏览器工具栏，剩余高度全部给原型视口。
+        height: `${frameDimensions.height + 44}px`,
+      }
 
   const frameClassName = `pv-frame-shell pv-frame-shell--${deviceMode}`
 
@@ -1238,7 +1266,7 @@ export function PrototypeViewerPage() {
           </div>
         </div>
 
-        <div className="pv-canvas-wrap">
+        <div className="pv-canvas-wrap" ref={canvasWrapRef}>
           {inspectMode ? (
             <div className="pv-inspect-banner">
               <span>实时标注已开启</span>

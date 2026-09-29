@@ -2823,6 +2823,7 @@ a:hover {
   flex-direction: column;
   min-width: 0;
   min-height: calc(100vh - var(--topbar-height));
+  height: calc(100vh - var(--topbar-height));
   background: var(--bg-page);
 }
 
@@ -2881,10 +2882,13 @@ a:hover {
 
 .pv-canvas-wrap {
   flex: 1;
+  min-height: 0;
   overflow: auto;
-  padding: 28px;
+  padding: 8px;
   background: linear-gradient(180deg, #f8fafc 0%, #f3f6fb 100%);
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .pv-inspect-banner {
@@ -2921,13 +2925,21 @@ a:hover {
   margin: 0 auto;
   background: #f1f5f9;
   border: 1px solid var(--border-light);
-  border-radius: 20px;
-  padding: 18px;
+  border-radius: 12px;
+  padding: 6px;
   box-shadow: var(--shadow-md);
   position: relative;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+}
+
+.pv-frame-shell--desktop {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  max-width: none;
+  margin: 0;
 }
 
 /* 设备模式的尺寸由 JS 动态控制，不再使用 max-width */
