@@ -536,11 +536,15 @@ export class WorkspaceService {
     if (!file.projectId) return file.uploaderId === userId || filePermission?.canView ? { ...file, permission: filePermission } : null
     const viewer = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } })
     if (viewer?.role === 'SUPER_ADMIN') return { ...file, permission: file.permissions[0] ?? { canView: true, canComment: true, canEdit: true, canDelete: true } }
-    const projectPermission = await this.prisma.projectPermission.findUnique({ where: { projectId_userId: { projectId: file.projectId, userId } } })
-    if (!projectPermission) return null
-    // File permissions are explicit and never inherited from project permissions. Legacy files
-    // temporarily remain visible to their uploader until a permission row is configured.
-    if (file.uploaderId === userId || file.permissions[0]?.canView) return { ...file, permission: file.permissions[0] }
+    const membership = await this.prisma.teamMember.findFirst({ where: { userId, team: { projects: { some: { id: file.projectId } } } }, select: { role: true } })
+    const isTeamMember = !!membership
+    // 团队成员可以查看团队项目下的所有原型，明确的文件权限会覆盖默认权限
+    if (isTeamMember) {
+      const explicitPermission = file.permissions[0]
+      return { ...file, permission: explicitPermission ?? { canView: true, canComment: true, canEdit: false, canDelete: false } }
+    }
+    // 非团队成员需要明确的文件权限或是上传者
+    if (file.uploaderId === userId || filePermission?.canView) return { ...file, permission: filePermission }
     return null
   }
 
