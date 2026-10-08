@@ -199,6 +199,10 @@ describe('PUBLIC_VIEW_ONLY security HTTP regression', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled()
   })
 
+  it('does not reflect hostile Host headers into CSP', async () => {
+    await request(app.getHttpServer()).get(`${base}/resources/nested/index.html`).set('Host', "example.com; script-src *").expect(404)
+  })
+
   it('has no anonymous write/comment/download endpoints', async () => {
     await request(app.getHttpServer()).post(`${base}/pages`).expect(404)
     await request(app.getHttpServer()).post(`${base}/resources/nested/index.html`).expect(404)

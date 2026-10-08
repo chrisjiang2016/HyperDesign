@@ -56,7 +56,7 @@ export class PublicPreviewController {
     // the existing trusted public origin; development falls back to a strictly
     // validated authority, never concatenating raw Host input into the policy.
     const authority = request.get('host') ?? ''
-    if (!/^[a-zA-Z0-9.\-\[\]:]+$/.test(authority)) throw this.unavailable()
+    if (!/^[a-zA-Z0-9.[\]:-]+$/.test(authority)) throw this.unavailable()
     const origin = new URL(process.env.APP_ORIGIN ?? `${request.protocol}://${authority}`).origin
     if (!/^https?:\/\//.test(origin)) throw this.unavailable()
     const assets = `${origin}/api/public/shares/${encodeURIComponent(token)}/resources/`
