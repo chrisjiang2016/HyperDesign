@@ -4,15 +4,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AuthLayout } from '@/layouts/AppLayouts'
 import { PageError, PageLoading } from '@/components/common/pagestates'
-import { acceptShareLink, inspectShareLink, type ShareAccessType } from '@/api/workspace'
+import { acceptShareLink, inspectShareLink, type ShareInfo } from '@/api/workspace'
+import { PublicPrototypeViewerPage } from './PublicPrototypeViewerPage'
 import { getCurrentUser } from '@/api/auth'
-
-type ShareInfo = {
-  file: { id: string; name: string; pageCount: number; projectName: string }
-  expiresAt: string
-  accessType: ShareAccessType
-  teamName: string | null
-}
 
 export function ShareAccessPage() {
   const { token = '' } = useParams()
@@ -40,7 +34,7 @@ export function ShareAccessPage() {
   useEffect(() => { void loadShare() }, [loadShare])
 
   const accept = async () => {
-    if (!token) return
+    if (!token || share?.accessType === 'PUBLIC_VIEW_ONLY') return
     setAccepting(true)
     try {
       await getCurrentUser()
@@ -59,11 +53,15 @@ export function ShareAccessPage() {
     }
   }
 
+  if (!loading && !error && share?.accessType === 'PUBLIC_VIEW_ONLY') {
+    return <PublicPrototypeViewerPage key={token} token={token} />
+  }
+
   return (
     <AuthLayout>
       {loading ? <PageLoading label="正在验证分享链接" /> : null}
       {error ? <PageError title="无法打开分享" description={error} action={{ label: '重新验证', onClick: () => void loadShare() }} /> : null}
-      {share && !error ? (
+      {share && share.accessType !== 'PUBLIC_VIEW_ONLY' && !error ? (
         <section className="hd-share-access-card">
           <div className="hd-share-access-card__icon"><ShareAltOutlined /></div>
           <span className="hd-share-access-card__eyebrow">HyperDesign 原型分享</span>

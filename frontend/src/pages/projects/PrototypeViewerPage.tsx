@@ -4,7 +4,7 @@ import { CommentOutlined, CopyOutlined, ExportOutlined, LeftOutlined, MinusOutli
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ViewerShellLayout } from '@/layouts/AppLayouts'
 import { PageEmpty, PageError, PageLoading } from '@/components/common/pagestates'
-import { createAnnotationComment, createFileAnnotation, createFileShareLink, getFileAnnotations, getFileShareLinks, getFirstPreview, getNavTeamsProjects, getProjectDetail, getProjectFiles, getPrototypePages, revokeFileShareLink, rotateFileShareLink, type CollaborationAnnotation, type FilePermission, type NavTeam, type ProjectDetail, type PrototypePage, type ShareAccessType, type ShareLink } from '@/api/workspace'
+import { createAnnotationComment, createFileAnnotation, createFileShareLink, getFileAnnotations, getFileShareLinks, getFirstPreview, getNavTeamsProjects, getProjectDetail, getProjectFiles, getPrototypePages, revokeFileShareLink, rotateFileShareLink, shareAccessLabels, type CollaborationAnnotation, type FilePermission, type NavTeam, type ProjectDetail, type PrototypePage, type ShareAccessType, type ShareLink } from '@/api/workspace'
 import type { ViewerMarker, ViewerComment, ViewerAnnotationPayload } from '@/store/viewerMockData'
 
 const { TextArea } = Input
@@ -1400,9 +1400,11 @@ export function PrototypeViewerPage() {
       </div>
       <Modal centered width={680} title="分享原型" open={shareOpen} onCancel={() => { setShareOpen(false); setManualCopyUrl(null) }} footer={<Button onClick={() => { setShareOpen(false); setManualCopyUrl(null) }}>关闭</Button>}>
         <p className="hd-share-modal__intro">
-          {shareAccessType === 'JOIN_TEAM'
-            ? '分享对象登录或注册后接受链接，将加入该原型所属团队成为普通成员，可查看团队内的项目；链接支持 1–30 天有效期。'
-            : '分享对象登录并接受链接后，可获得该原型的只读预览权限，不会加入团队；链接支持 1–30 天有效期。'}
+          {shareAccessType === 'PUBLIC_VIEW_ONLY'
+            ? '任何收到链接的人无需登录即可直接查看此原型，不可评论、标注、编辑、删除或下载源 ZIP；到期或撤销后无法继续查看。请仅分享给可信对象。'
+            : shareAccessType === 'JOIN_TEAM'
+              ? '分享对象登录或注册后接受链接，将加入该原型所属团队成为普通成员，可查看团队内的项目；链接支持 1–30 天有效期。'
+              : '分享对象登录并接受链接后，可获得该原型的只读预览权限，不会加入团队；链接支持 1–30 天有效期。'}
         </p>
         {manualCopyUrl ? (
           <div className="hd-share-modal__manual-copy">
@@ -1418,25 +1420,27 @@ export function PrototypeViewerPage() {
             onChange={setShareAccessType}
             style={{ minWidth: 168 }}
             options={[
-              { value: 'VIEW_ONLY', label: '仅查看原型' },
-              { value: 'JOIN_TEAM', label: '可加入本团队' },
+              { value: 'VIEW_ONLY', label: shareAccessLabels.VIEW_ONLY },
+              { value: 'JOIN_TEAM', label: shareAccessLabels.JOIN_TEAM },
+              { value: 'PUBLIC_VIEW_ONLY', label: shareAccessLabels.PUBLIC_VIEW_ONLY },
             ]}
           />
-          <Select value={shareDays} onChange={setShareDays} options={[1, 3, 7, 14, 30].map((value) => ({ value, label: `${value} 天后过期` }))} />
+          <Select value={shareDays} onChange={setShareDays} options={Array.from({ length: 30 }, (_, index) => index + 1).map((value) => ({ value, label: `${value} 天后过期` }))} />
           <Button type="primary" className="hd-btn-primary" loading={creatingShare} onClick={() => void createShare()}><ShareAltOutlined /> 创建并复制链接</Button>
         </div>
         <div className="hd-share-modal__list">
           {shareLoading ? <PageLoading label="正在加载分享记录" /> : null}
-          {!shareLoading && shareLinks.length === 0 ? <PageEmpty title="还没有分享链接" description="创建链接后，可将该原型以只读权限分享给已登录用户，或允许对方加入本团队。" /> : null}
+          {!shareLoading && shareLinks.length === 0 ? <PageEmpty title="还没有分享链接" description="可选择免登录仅查看、登录后仅查看，或允许对方加入本团队。" /> : null}
           {!shareLoading && shareLinks.map((link) => {
             const token = link.token
-            const isActive = link.status === 'active'
+            const isExpired = new Date(link.expiresAt).getTime() <= Date.now()
+            const isActive = link.status === 'active' && !isExpired
             return <div key={link.id} className="hd-share-link-row">
               <div>
                 <strong>
-                  {isActive ? '有效链接' : '已撤销链接'}
+                  {link.status === 'revoked' ? '已撤销链接' : isExpired ? '已到期链接' : '有效链接'}
                   <Tag className="hd-share-link-row__tag" color={link.accessType === 'JOIN_TEAM' ? 'blue' : 'default'}>
-                    {link.accessType === 'JOIN_TEAM' ? <><TeamOutlined /> 可加入团队</> : '仅查看'}
+                    {link.accessType === 'JOIN_TEAM' ? <><TeamOutlined /> {shareAccessLabels.JOIN_TEAM}</> : shareAccessLabels[link.accessType]}
                   </Tag>
                 </strong>
                 <span>到期：{new Date(link.expiresAt).toLocaleString('zh-CN', { hour12: false })} · 已接受 {link.acceptedCount} 次</span>

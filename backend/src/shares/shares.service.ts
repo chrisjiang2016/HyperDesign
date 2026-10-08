@@ -5,13 +5,16 @@ import { WorkspaceService } from '../auth/current-user.service'
 
 const hashToken = (token: string) => createHash('sha256').update(token).digest('hex')
 
-export type ShareAccessTypeInput = 'VIEW_ONLY' | 'JOIN_TEAM'
+export type ShareAccessTypeInput = 'VIEW_ONLY' | 'JOIN_TEAM' | 'PUBLIC_VIEW_ONLY'
 
 @Injectable()
 export class SharesService {
   constructor(private readonly prisma: PrismaService, private readonly workspace: WorkspaceService) {}
 
-  async create(userId: string, fileId: string, expiresInDays: number, accessType: ShareAccessTypeInput = 'VIEW_ONLY') {
+  async create(userId: string, fileId: string, expiresInDays: number = 7, accessType: ShareAccessTypeInput = 'VIEW_ONLY') {
+    if (!Number.isInteger(expiresInDays) || expiresInDays < 1 || expiresInDays > 30 || !['VIEW_ONLY', 'JOIN_TEAM', 'PUBLIC_VIEW_ONLY'].includes(accessType)) {
+      throw new BadRequestException({ errorCode: 'VALIDATION_ERROR', message: '分享类型或有效期无效（需为 1–30 天）' })
+    }
     await this.requireFileManager(userId, fileId)
     // 「加入团队」类型会提升对方权限，必须确认该文件确实归属某个团队，否则无从加入
     if (accessType === 'JOIN_TEAM') {
@@ -59,6 +62,11 @@ export class SharesService {
 
   async inspect(token: string) {
     const link = await this.findActiveToken(token)
+    if (link.accessType === 'PUBLIC_VIEW_ONLY') {
+      const file = await this.prisma.prototypeFile.findUnique({ where: { id: link.fileId }, select: { name: true, pageCount: true } })
+      if (!file) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '分享目标已不存在' })
+      return { file, expiresAt: link.expiresAt, accessType: link.accessType }
+    }
     const file = await this.prisma.prototypeFile.findUnique({ where: { id: link.fileId }, select: { id: true, name: true, pageCount: true, project: { select: { name: true, team: { select: { name: true } } } } } })
     if (!file) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '分享目标已不存在' })
     return {
@@ -71,6 +79,9 @@ export class SharesService {
 
   async accept(userId: string, token: string) {
     const link = await this.findActiveToken(token)
+    if (link.accessType === 'PUBLIC_VIEW_ONLY') {
+      throw new ForbiddenException({ errorCode: 'PUBLIC_SHARE_CANNOT_ACCEPT', message: '免登录分享仅可通过链接预览，不能接受或授予持久权限' })
+    }
     const joinTeam = link.accessType === 'JOIN_TEAM'
     const teamId = joinTeam ? await this.resolveTeamId(link.fileId) : null
 
@@ -129,6 +140,14 @@ export class SharesService {
     // 平台级超级管理员拥有全局数据权限，可管理任意文件的分享链接
     if (await this.workspace.isSuperAdmin(userId)) return
     throw new ForbiddenException({ errorCode: 'FORBIDDEN', message: '仅文件上传者或编辑者可管理分享链接' })
+  }
+
+  async requirePublicToken(token: string) {
+    const link = await this.findActiveToken(token)
+    if (link.accessType !== 'PUBLIC_VIEW_ONLY') {
+      throw new NotFoundException({ errorCode: 'SHARE_LINK_UNAVAILABLE', message: '该链接不支持免登录预览' })
+    }
+    return link
   }
 
   private async findActiveToken(token: string) {

@@ -164,8 +164,33 @@ export type CollaborationAnnotation = {
   comments: CollaborationComment[]
 }
 
-/** 分享链接授予的权限：仅查看 / 接受后加入所属团队 */
-export type ShareAccessType = 'VIEW_ONLY' | 'JOIN_TEAM'
+/** 分享类型：登录后仅查看 / 加入团队 / 免登录仅查看 */
+export type ShareAccessType = 'VIEW_ONLY' | 'JOIN_TEAM' | 'PUBLIC_VIEW_ONLY'
+
+export const shareAccessLabels: Record<ShareAccessType, string> = {
+  VIEW_ONLY: '登录后仅查看',
+  JOIN_TEAM: '可加入团队',
+  PUBLIC_VIEW_ONLY: '免登录仅查看',
+}
+
+export type PublicSharePreview = {
+  name: string
+  entryPageId: string | null
+  pages: PrototypePage[]
+  expiresAt: string
+  serverTime: string
+}
+
+export async function getPublicSharePreview(token: string): Promise<PublicSharePreview> {
+  // No session credentials, and no persistent workspace grant.
+  const response = await fetch(`/api/public/shares/${encodeURIComponent(token)}/pages`, { credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer', signal: AbortSignal.timeout(10000) })
+  if (!response.ok) throw new Error('分享链接已失效或预览尚未就绪')
+  return (await response.json() as ApiResponse<PublicSharePreview>).data
+}
+
+export function publicShareResourceUrl(token: string, path: string) {
+  return `/api/public/shares/${encodeURIComponent(token)}/resources/${path.split('/').map(encodeURIComponent).join('/')}`
+}
 
 export type ShareLink = {
   id: string
@@ -322,8 +347,12 @@ export async function rotateFileShareLink(fileId: string, shareId: string) {
   return (await http.post<ApiResponse<ShareLink>>(`/files/${fileId}/shares/${shareId}/rotate`)).data.data
 }
 
+export type ShareInfo =
+  | { file: { name: string; pageCount: number }; expiresAt: string; accessType: 'PUBLIC_VIEW_ONLY' }
+  | { file: { id: string; name: string; pageCount: number; projectName: string }; expiresAt: string; accessType: 'VIEW_ONLY' | 'JOIN_TEAM'; teamName: string | null }
+
 export async function inspectShareLink(token: string) {
-  return (await http.get<ApiResponse<{ file: { id: string; name: string; pageCount: number; projectName: string }; expiresAt: string; accessType: ShareAccessType; teamName: string | null }>>(`/shares/${token}`)).data.data
+  return (await http.get<ApiResponse<ShareInfo>>(`/shares/${encodeURIComponent(token)}`, { withCredentials: false })).data.data
 }
 
 export async function acceptShareLink(token: string) {

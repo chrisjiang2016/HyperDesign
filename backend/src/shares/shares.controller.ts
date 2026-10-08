@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Post, Req } from '@nestjs/common'
-import type { Request } from 'express'
+import { Body, Controller, Delete, Get, Param, Post, Req, Res } from '@nestjs/common'
+import type { Request, Response } from 'express'
 import { AuthService } from '../auth/auth.service'
 import { ok } from '../common/api-response'
 import { CreateShareLinkDto } from './dto'
@@ -36,7 +36,9 @@ export class SharesController {
   }
 
   @Get('shares/:token')
-  async inspect(@Param('token') token: string) {
+  async inspect(@Param('token') token: string, @Res({ passthrough: true }) response: Response) {
+    response.setHeader('Cache-Control', 'no-store')
+    response.setHeader('Referrer-Policy', 'no-referrer')
     return ok(await this.shares.inspect(token), '分享链接有效')
   }
 

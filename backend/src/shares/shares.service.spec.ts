@@ -87,7 +87,7 @@ describe('SharesService', () => {
     await expect(service.accept('guest-1', 'valid-token')).resolves.toEqual({ fileId: 'file-1', accessType: 'VIEW_ONLY', joinedTeamId: null })
     expect(prisma.shareGrant.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: { shareLinkId: 'share-1', userId: 'guest-1' } }))
     expect(prisma.filePermission.createMany).toHaveBeenCalledWith({
-      data: [{ fileId: 'file-1', userId: 'guest-1', canView: true, canComment: false, canEdit: false, canDelete: false, grantedById: undefined }],
+      data: [{ fileId: 'file-1', userId: 'guest-1', canView: true, canComment: false, canEdit: false, canDelete: false, grantedById: 'owner-1' }],
       skipDuplicates: true,
     })
     // 仅查看类型绝不能把对方加入团队
@@ -127,6 +127,47 @@ describe('SharesService', () => {
       .mockResolvedValueOnce(managerFile)          // requireFileManager
       .mockResolvedValueOnce({ project: null })    // resolveTeamId：未归档文件
     await expect(service.create('owner-1', 'file-1', 7, 'JOIN_TEAM')).rejects.toBeInstanceOf(BadRequestException)
+    expect(prisma.shareLink.create).not.toHaveBeenCalled()
+  })
+
+  it('creates a public view-only link without granting persistent access', async () => {
+    prisma.prototypeFile.findUnique.mockResolvedValue(managerFile)
+    prisma.shareLink.create.mockImplementation(async ({ data }: any) => ({ id: 'share-public', ...data, status: 'ACTIVE', createdAt: now, revokedAt: null }))
+
+    const result = await service.create('owner-1', 'file-1', 7, 'PUBLIC_VIEW_ONLY')
+
+    expect(result.accessType).toBe('PUBLIC_VIEW_ONLY')
+    expect(prisma.shareGrant.upsert).not.toHaveBeenCalled()
+    expect(prisma.filePermission.createMany).not.toHaveBeenCalled()
+    expect(prisma.teamMember.upsert).not.toHaveBeenCalled()
+  })
+
+  it('rejects accepting a public view-only link', async () => {
+    prisma.shareLink.findUnique.mockResolvedValue({ ...activeLink, accessType: 'PUBLIC_VIEW_ONLY' })
+
+    await expect(service.accept('guest-1', 'public-token')).rejects.toBeInstanceOf(ForbiddenException)
+    expect(prisma.$transaction).not.toHaveBeenCalled()
+  })
+
+  it('allows public token access only for active public links', async () => {
+    prisma.shareLink.findUnique.mockResolvedValue({ ...activeLink, accessType: 'PUBLIC_VIEW_ONLY' })
+
+    await expect(service.requirePublicToken('public-token')).resolves.toMatchObject({ accessType: 'PUBLIC_VIEW_ONLY' })
+    prisma.shareLink.findUnique.mockResolvedValue(activeLink)
+    await expect(service.requirePublicToken('login-token')).rejects.toBeInstanceOf(NotFoundException)
+  })
+
+  it('rejects public token access after expiry', async () => {
+    prisma.shareLink.findUnique.mockResolvedValue({ ...activeLink, accessType: 'PUBLIC_VIEW_ONLY', expiresAt: new Date('2026-07-19T10:00:00.000Z') })
+
+    await expect(service.requirePublicToken('public-token')).rejects.toBeInstanceOf(NotFoundException)
+  })
+
+  it('rejects invalid public share expiry and type', async () => {
+    prisma.prototypeFile.findUnique.mockResolvedValue(managerFile)
+
+    await expect(service.create('owner-1', 'file-1', 0, 'PUBLIC_VIEW_ONLY')).rejects.toBeInstanceOf(BadRequestException)
+    await expect(service.create('owner-1', 'file-1', 31, 'PUBLIC_VIEW_ONLY')).rejects.toBeInstanceOf(BadRequestException)
     expect(prisma.shareLink.create).not.toHaveBeenCalled()
   })
 

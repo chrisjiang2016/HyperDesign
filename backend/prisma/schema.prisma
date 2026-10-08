@@ -52,9 +52,11 @@ enum ShareLinkStatus {
 /// 分享链接授予的权限类型
 /// VIEW_ONLY：接受后仅获得该原型的只读预览权限
 /// JOIN_TEAM：接受后额外加入该原型所属团队，成为普通成员
+/// PUBLIC_VIEW_ONLY：免登录、仅在有效 token 范围内查看，不产生持久授权
 enum ShareAccessType {
   VIEW_ONLY
   JOIN_TEAM
+  PUBLIC_VIEW_ONLY
 }
 
 model User {
