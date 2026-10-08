@@ -35,7 +35,7 @@ export class CollaborationService {
     const page = await this.prisma.prototypePage.findFirst({ where: { id: pageId, fileId }, select: { id: true } })
     if (!page) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '原型页面不存在或不属于当前文件' })
     const result = await this.prisma.$transaction(async (tx) => {
-      const last = await tx.annotation.aggregate({ where: { fileId }, _max: { number: true } })
+      const last = await tx.annotation.aggregate({ where: { fileId, pageId }, _max: { number: true } })
       const annotation = await tx.annotation.create({
         data: { fileId, pageId, number: (last._max.number ?? 0) + 1, title: dto.title.trim(), topPercent: dto.topPercent, leftPercent: dto.leftPercent, pageScrollTop: dto.pageScrollTop, pageScrollHeight: dto.pageScrollHeight, createdById: userId, comments: { create: { content: dto.content.trim(), createdById: userId } } },
         include: { createdBy: { select: { username: true } }, comments: { where: { parentId: null }, include: { createdBy: { select: { username: true } }, replies: { include: { createdBy: { select: { username: true } } } } } } },

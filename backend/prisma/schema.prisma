@@ -176,7 +176,7 @@ model Annotation {
   createdBy   User             @relation("AnnotationAuthor", fields: [createdById], references: [id], onDelete: Restrict)
   comments    AnnotationComment[]
 
-  @@unique([fileId, number])
+  @@unique([fileId, pageId, number])
   @@index([pageId, status, createdAt])
 }
 

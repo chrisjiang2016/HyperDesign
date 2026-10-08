@@ -755,27 +755,11 @@ export function PrototypeViewerPage() {
 
   const getMarkerPosition = useCallback(
     (marker: ViewerMarker) => {
-      const currentScrollTop = (iframeSize as unknown as Record<string, number>).scrollTop ?? 0
-      const currentScrollHeight = (iframeSize as unknown as Record<string, number>).scrollHeight ?? iframeSize.height
-      const currentClientHeight = (iframeSize as unknown as Record<string, number>).clientHeight ?? iframeSize.height
-
-      // Use the scroll snapshot stored at annotation time to compute the
-      // marker’s absolute position in the full document, then translate that
-      // into the current visible viewport.
-      const storedScrollTop = marker.pageScrollTop || 0
-      const storedScrollHeight = marker.pageScrollHeight || currentScrollHeight
-
-      if (storedScrollHeight > currentClientHeight && storedScrollHeight > 0) {
-        // Absolute document position (as % of full document height)
-        const absoluteTopPercent = marker.topPercent + (storedScrollTop / storedScrollHeight) * 100
-        // Translate to current viewport
-        const viewportTop = absoluteTopPercent - (currentScrollTop / currentScrollHeight) * 100
-        if (viewportTop < -2 || viewportTop > 102) return null
-        return { top: Math.max(-2, Math.min(102, viewportTop)), left: marker.leftPercent }
-      }
+      // 标记应该固定在原型内容中的相对位置，不随视口滚动而移动
+      // topPercent 和 leftPercent 已经是相对于整个文档的百分比位置
       return { top: marker.topPercent, left: marker.leftPercent }
     },
-    [iframeSize],
+    [],
   )
 
   const modeLabel = inspectMode ? '规格面板已开启' : commentMode ? '评论模式中' : '浏览模式'

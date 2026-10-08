@@ -3031,7 +3031,9 @@ a:hover {
 
 .pv-marker-wrap {
   position: absolute;
-  transform: translate(-50%, -50%);
+  /* 使用 margin 负值代替 transform translate 来居中，避免与子元素的 scale transform 冲突 */
+  margin-left: -14px;
+  margin-top: -14px;
 }
 
 .pv-comment-marker {

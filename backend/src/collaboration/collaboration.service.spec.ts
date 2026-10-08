@@ -20,6 +20,26 @@ describe('CollaborationService', () => {
 
   const comment = { id: 'comment-1', annotationId: 'annotation-1', createdById: 'author-1', content: 'old', createdBy: { username: '作者' } }
 
+  it('numbers annotations independently for each page', async () => {
+    workspace.canAccessPrototypeFile.mockResolvedValue({ permission: { canView: true, canComment: true, canEdit: false, canDelete: false } })
+    prisma.prototypePage = { findFirst: jest.fn().mockResolvedValue({ id: 'page-1' }) }
+    const numbers = new Map<string, number>()
+    prisma.annotation.aggregate = jest.fn(async ({ where }) => ({ _max: { number: numbers.get(where.pageId) ?? null } }))
+    prisma.annotation.create = jest.fn(async ({ data }) => {
+      numbers.set(data.pageId, data.number)
+      return { ...data, id: `annotation-${data.pageId}-${data.number}`, status: 'OPEN', createdAt: new Date(), createdBy: { username: '作者' }, comments: [] }
+    })
+    prisma.$transaction = jest.fn(async (callback) => callback(prisma))
+    const dto = { title: '标注', content: '评论', topPercent: 20, leftPercent: 30, pageScrollTop: 0, pageScrollHeight: 100 }
+
+    const first = await service.createAnnotation('author-1', 'file-1', 'page-1', dto)
+    const second = await service.createAnnotation('author-1', 'file-1', 'page-1', dto)
+    const otherPage = await service.createAnnotation('author-1', 'file-1', 'page-2', dto)
+
+    expect([first.number, second.number, otherPage.number]).toEqual([1, 2, 1])
+    expect(prisma.annotation.aggregate).toHaveBeenLastCalledWith({ where: { fileId: 'file-1', pageId: 'page-2' }, _max: { number: true } })
+  })
+
   it('blocks a read-only shared user from adding a comment', async () => {
     workspace.canAccessPrototypeFile.mockResolvedValue({ permission: { canView: true, canComment: false, canEdit: false, canDelete: false } })
     await expect(service.addComment('guest-1', 'file-1', 'annotation-1', { content: '不能评论' })).rejects.toBeInstanceOf(ForbiddenException)
