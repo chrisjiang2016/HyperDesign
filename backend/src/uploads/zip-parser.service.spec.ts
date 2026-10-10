@@ -22,6 +22,16 @@ describe('ZipParserService path safety', () => {
     expect(service.assertSafeRelativePath('assets/scripts/app.js')).toBe('assets/scripts/app.js')
   })
 
+  it('decodes legacy GB18030 archive filenames', () => {
+    const pathBuffer = Buffer.from([0xbb, 0xe1, 0xd4, 0xb1, 0xd6, 0xd0, 0xd0, 0xc4, 0x2e, 0x68, 0x74, 0x6d, 0x6c])
+    expect((service as any).decodeArchivePath({ path: pathBuffer.toString('utf8'), pathBuffer, isUnicode: false })).toBe('会员中心.html')
+  })
+
+  it('keeps explicitly UTF-8 archive filenames unchanged', () => {
+    const pathBuffer = Buffer.from('会员中心.html', 'utf8')
+    expect((service as any).decodeArchivePath({ path: '会员中心.html', pathBuffer, isUnicode: true })).toBe('会员中心.html')
+  })
+
   it('rejects unsafe archive metadata', () => {
     expect(() => service.assertSafeArchive([
       { path: '../escape.txt', type: 'File', uncompressedSize: 1 },

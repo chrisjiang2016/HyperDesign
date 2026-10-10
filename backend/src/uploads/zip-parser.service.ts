@@ -39,8 +39,12 @@ export class ZipParserService {
     this.assertSafeArchive(directory.files)
 
     for (const entry of directory.files) {
-      if (entry.type === 'Directory') continue
-      const outputPath = this.safeDestination(root, entry.path)
+      const entryPath = this.decodeArchivePath(entry)
+      if (entry.type === 'Directory') {
+        await fs.mkdir(this.safeDestination(root, entryPath), { recursive: true })
+        continue
+      }
+      const outputPath = this.safeDestination(root, entryPath)
       await fs.mkdir(dirname(outputPath), { recursive: true })
       await new Promise<void>((resolveWrite, rejectWrite) => {
         entry.stream()
@@ -121,6 +125,15 @@ export class ZipParserService {
       throw new BadRequestException({ errorCode: 'VALIDATION_ERROR', message: '资源路径不安全' })
     }
     return normalized
+  }
+
+  private decodeArchivePath(entry: { path: string; pathBuffer?: Buffer; isUnicode?: boolean }): string {
+    if (entry.isUnicode || !entry.pathBuffer) return entry.path
+
+    const utf8Path = entry.pathBuffer.toString('utf8')
+    if (!utf8Path.includes('\ufffd')) return utf8Path
+
+    return new TextDecoder('gb18030').decode(entry.pathBuffer)
   }
 
   assertSafeArchive(entries: Array<{ path: string; type: string; uncompressedSize?: number }>): void {
