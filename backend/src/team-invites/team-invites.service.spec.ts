@@ -13,6 +13,10 @@ describe('TeamInvitesService', () => {
     prisma = {
       teamInvite: { create: jest.fn(), findFirst: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
       teamMember: { findUnique: jest.fn(), create: jest.fn() },
+      project: { findMany: jest.fn().mockResolvedValue([]) },
+      projectPermission: { createMany: jest.fn() },
+      prototypeFile: { findMany: jest.fn().mockResolvedValue([]) },
+      filePermission: { createMany: jest.fn() },
       operationLog: { create: jest.fn().mockResolvedValue({}) },
     }
     workspace = { isSuperAdmin: jest.fn().mockResolvedValue(false) }
@@ -43,7 +47,7 @@ describe('TeamInvitesService', () => {
     prisma.teamMember.create.mockResolvedValue({})
 
     await expect(service.accept('guest-1', 'valid-token')).resolves.toEqual({ teamId: 'team-1', teamName: '产品团队', alreadyMember: false })
-    expect(prisma.teamMember.create).toHaveBeenCalledWith({ data: { teamId: 'team-1', userId: 'guest-1', role: 'MEMBER', canUpload: false } })
+    expect(prisma.teamMember.create).toHaveBeenCalledWith({ data: { teamId: 'team-1', userId: 'guest-1', role: 'MEMBER', canUpload: true } })
   })
 
   it('rejects an expired invitation', async () => {

@@ -130,6 +130,7 @@ export class WorkspaceService {
 
   async getWorkspace(userId: string) {
     const superAdmin = await this.isSuperAdmin(userId)
+    const elevatedTeamAdmin = await this.hasElevatedTeamPermissions(userId)
     const memberships: any[] = superAdmin
       ? (
           await this.prisma.team.findMany({
@@ -164,7 +165,7 @@ export class WorkspaceService {
         description: membership.team.description,
         icon: membership.team.icon,
         color: membership.team.color,
-        roleLabel: this.mapTeamRole(membership.role),
+        roleLabel: elevatedTeamAdmin ? '管理员' : this.mapTeamRole(membership.role),
         memberCount: membership.team._count.members,
         projectCount: membership.team._count.projects,
         extraStat: superAdmin
@@ -262,6 +263,7 @@ export class WorkspaceService {
 
   async getTeamDetail(userId: string, teamId: string): Promise<TeamDetailResponse | null> {
     const superAdmin = await this.isSuperAdmin(userId)
+    const elevatedTeamAdmin = await this.hasElevatedTeamPermissions(userId)
 
     let team: any
     let roleLabel: '管理员' | '成员' = '管理员'
@@ -303,7 +305,7 @@ export class WorkspaceService {
       })
       if (!membership) return null
       team = membership.team
-      roleLabel = this.mapTeamRole(membership.role)
+      roleLabel = elevatedTeamAdmin ? '管理员' : this.mapTeamRole(membership.role)
     }
 
     const visibleProjects = team.projects.map((project: any) => ({
@@ -312,7 +314,7 @@ export class WorkspaceService {
       description: project.description,
       fileCount: project._count.files,
       updatedAt: this.formatRelativeDate(project.updatedAt),
-      permission: superAdmin ? 'edit' : this.mapProjectPermission(project.permissions.find((item: any) => item.userId === userId)?.level ?? 'VIEW'),
+      permission: elevatedTeamAdmin ? 'edit' : this.mapProjectPermission(project.permissions.find((item: any) => item.userId === userId)?.level ?? 'VIEW'),
     })) as TeamDetailProject[]
 
     const members: TeamDetailMember[] = team.members
@@ -322,8 +324,8 @@ export class WorkspaceService {
         name: member.user.username,
         email: `${member.user.username}@example.com`,
         initials: this.getInitials(member.user.username),
-        role: this.mapTeamRole(member.role),
-        canUpload: member.canUpload,
+        role: member.user.role === 'SUB_ADMIN' ? '管理员' : this.mapTeamRole(member.role),
+        canUpload: member.user.role === 'SUB_ADMIN' || member.canUpload,
       }))
 
     return {
@@ -332,7 +334,7 @@ export class WorkspaceService {
       description: team.description,
       icon: team.icon,
       color: team.color,
-      roleLabel: superAdmin ? '管理员' : roleLabel,
+      roleLabel: elevatedTeamAdmin ? '管理员' : roleLabel,
       memberCount: members.length,
       projectCount: team.projects.length,
       fileCountEstimate: team.projects.reduce((sum: number, project: any) => sum + project._count.files, 0),
@@ -368,7 +370,7 @@ export class WorkspaceService {
       name: project.name,
       description: project.description,
       permission: superAdmin ? 'edit' : this.mapProjectPermission(project.permissions.find((p: any) => p.userId === userId)?.level ?? 'VIEW'),
-      canDelete: superAdmin || project.team.members[0]?.role === 'ADMIN',
+      canDelete: superAdmin || project.team.members[0]?.role === 'ADMIN' || (await this.isSubAdmin(userId) && !!project.team.members.length),
       stats: {
         fileCount: project._count.files,
         collaboratorCount: project.permissions.length,
@@ -382,6 +384,7 @@ export class WorkspaceService {
 
   async getTeamProjectsForNav(userId: string) {
     const superAdmin = await this.isSuperAdmin(userId)
+    const elevatedTeamAdmin = await this.hasElevatedTeamPermissions(userId)
     const memberships: any[] = superAdmin
       ? (
           await this.prisma.team.findMany({
@@ -415,13 +418,13 @@ export class WorkspaceService {
       name: membership.team.name,
       color: membership.team.color,
       projectCount: membership.team.projects.length,
-      roleLabel: this.mapTeamRole(membership.role),
+      roleLabel: elevatedTeamAdmin ? '管理员' : this.mapTeamRole(membership.role),
       projects: membership.team.projects
-        .filter((project: any) => superAdmin || project.permissions.length > 0)
+        .filter((project: any) => elevatedTeamAdmin || project.permissions.length > 0)
         .map((project: any) => ({
           id: project.id,
           name: project.name,
-          permission: this.mapProjectPermission(project.permissions[0]?.level ?? 'EDIT'),
+          permission: elevatedTeamAdmin ? 'edit' : this.mapProjectPermission(project.permissions[0]?.level ?? 'EDIT'),
         })),
     }))
   }
@@ -536,6 +539,10 @@ export class WorkspaceService {
     if (!file.projectId) return file.uploaderId === userId || filePermission?.canView ? { ...file, permission: filePermission } : null
     const viewer = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } })
     if (viewer?.role === 'SUPER_ADMIN') return { ...file, permission: file.permissions[0] ?? { canView: true, canComment: true, canEdit: true, canDelete: true } }
+    if (viewer?.role === 'SUB_ADMIN') {
+      const membership = await this.prisma.teamMember.findFirst({ where: { userId, team: { projects: { some: { id: file.projectId } } } }, select: { id: true } })
+      if (membership) return { ...file, permission: { canView: true, canComment: true, canEdit: true, canDelete: true } }
+    }
     const membership = await this.prisma.teamMember.findFirst({ where: { userId, team: { projects: { some: { id: file.projectId } } } }, select: { role: true } })
     const isTeamMember = !!membership
     // 团队成员可以查看团队项目下的所有原型，明确的文件权限会覆盖默认权限
@@ -558,6 +565,7 @@ export class WorkspaceService {
   async listProjectFiles(userId: string, projectId: string) {
     const superAdmin = await this.isSuperAdmin(userId)
     await this.requireProjectView(userId, projectId, superAdmin)
+    const elevatedTeamAdmin = await this.hasElevatedTeamPermissions(userId)
     const membership = await this.prisma.teamMember.findFirst({ where: { userId, team: { projects: { some: { id: projectId } } } }, select: { role: true } })
     const isTeamMember = superAdmin || !!membership
     const files = await this.prisma.prototypeFile.findMany({
@@ -577,7 +585,7 @@ export class WorkspaceService {
       pageCount: file.pageCount,
       fileSize: file.fileSize,
       uploader: file.uploader.username,
-      canDelete: isTeamMember || file.uploaderId === userId || permissionsByFileId.get(file.id) === true,
+      canDelete: isTeamMember && elevatedTeamAdmin || file.uploaderId === userId || permissionsByFileId.get(file.id) === true,
       entryPageId: file.entryPageId,
       createdAt: file.createdAt,
       updatedAt: file.updatedAt,
@@ -761,17 +769,18 @@ export class WorkspaceService {
 
   async listTeamProjects(userId: string, teamId: string) {
     const superAdmin = await this.isSuperAdmin(userId)
+    const elevatedTeamAdmin = await this.hasElevatedTeamPermissions(userId)
     await this.requireTeamMember(userId, teamId, superAdmin)
     const projects = await this.prisma.project.findMany({
-      where: superAdmin ? { teamId } : { teamId, permissions: { some: { userId } } },
-      include: { permissions: { where: superAdmin ? undefined : { userId }, select: { level: true } } },
+      where: elevatedTeamAdmin ? { teamId } : { teamId, permissions: { some: { userId } } },
+      include: { permissions: { where: elevatedTeamAdmin ? undefined : { userId }, select: { level: true } } },
       orderBy: { updatedAt: 'desc' },
     })
     return projects.map((project) => ({
       id: project.id,
       name: project.name,
       description: project.description,
-      permission: superAdmin ? 'edit' : this.mapProjectPermission(project.permissions[0].level),
+      permission: elevatedTeamAdmin ? 'edit' : this.mapProjectPermission(project.permissions[0].level),
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
     }))
@@ -833,6 +842,16 @@ export class WorkspaceService {
     return user?.role === 'SUPER_ADMIN'
   }
 
+  private async hasElevatedTeamPermissions(userId: string): Promise<boolean> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } })
+    return user?.role === 'SUPER_ADMIN' || user?.role === 'SUB_ADMIN'
+  }
+
+  private async isSubAdmin(userId: string): Promise<boolean> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } })
+    return user?.role === 'SUB_ADMIN'
+  }
+
   private async requireTeamMember(userId: string, teamId: string, superAdmin = false) {
     if (superAdmin) {
       const team = await this.prisma.team.findUnique({ where: { id: teamId } })
@@ -841,11 +860,13 @@ export class WorkspaceService {
     }
     const member = await this.prisma.teamMember.findUnique({ where: { teamId_userId: { teamId, userId } } })
     if (!member) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '团队不存在或无权访问' })
-    return member
+    return await this.isSubAdmin(userId) ? { ...member, role: 'ADMIN' as TeamRole, canUpload: true } : member
   }
 
   private async requireTeamAdmin(userId: string, teamId: string, superAdmin = false) {
     if (superAdmin) {
+      const team = await this.prisma.team.findUnique({ where: { id: teamId } })
+      if (!team) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '团队不存在或无权访问' })
       return { role: 'ADMIN' as TeamRole, canUpload: true, teamId, userId } as any
     }
     const member = await this.requireTeamMember(userId, teamId)
@@ -876,6 +897,11 @@ export class WorkspaceService {
   private async requireProjectView(userId: string, projectId: string, superAdmin = false) {
     if (superAdmin) {
       const project = await this.prisma.project.findUnique({ where: { id: projectId } })
+      if (!project) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '项目不存在或无权访问' })
+      return { level: 'EDIT' as ProjectPermissionLevel, projectId, userId } as any
+    }
+    if (await this.isSubAdmin(userId)) {
+      const project = await this.prisma.project.findFirst({ where: { id: projectId, team: { members: { some: { userId } } } } })
       if (!project) throw new NotFoundException({ errorCode: 'NOT_FOUND', message: '项目不存在或无权访问' })
       return { level: 'EDIT' as ProjectPermissionLevel, projectId, userId } as any
     }
